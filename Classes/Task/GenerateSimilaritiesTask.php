@@ -28,6 +28,13 @@ class GenerateSimilaritiesTask extends AbstractTask
         $this->logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
     }
 
+    protected function initializeDependencies(): void
+    {
+        $this->connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
+        $this->cacheManager = GeneralUtility::makeInstance(CacheManager::class);
+        $this->pageAnalysisService = GeneralUtility::makeInstance(PageAnalysisService::class);
+    }
+
     public function execute(): bool
     {
         try {
@@ -50,7 +57,7 @@ class GenerateSimilaritiesTask extends AbstractTask
 
                     // Récupérer toutes les pages du site pour cette langue
                     $pages = $this->getAllPages($rootPageId, $language->getLanguageId());
-                    
+
                     if (empty($pages)) {
                         $this->logger->warning('No pages found', [
                             'rootPageId' => $rootPageId,
@@ -79,13 +86,6 @@ class GenerateSimilaritiesTask extends AbstractTask
         }
     }
 
-    protected function initializeDependencies(): void
-    {
-        $this->connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
-        $this->cacheManager = GeneralUtility::makeInstance(CacheManager::class);
-        $this->pageAnalysisService = GeneralUtility::makeInstance(PageAnalysisService::class);
-    }
-
     protected function getAllPages(int $rootPageId, int $languageId): array
     {
         $queryBuilder = $this->connectionPool->getQueryBuilderForTable('pages');
@@ -95,11 +95,6 @@ class GenerateSimilaritiesTask extends AbstractTask
             $queryBuilder->expr()->eq('deleted', $queryBuilder->createNamedParameter(0, \PDO::PARAM_INT)),
             $queryBuilder->expr()->eq('hidden', $queryBuilder->createNamedParameter(0, \PDO::PARAM_INT))
         ];
-
-        // Pour la langue par défaut
-        if ($languageId === 0) {
-            $constraints[] = $queryBuilder->expr()->eq('pid', $queryBuilder->createNamedParameter($rootPageId, \PDO::PARAM_INT));
-        }
 
         $pages = $queryBuilder
             ->select('*')

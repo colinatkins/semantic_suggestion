@@ -25,7 +25,6 @@ services:
     public: true
     arguments:
       $pageAnalysisService: '@TalanHdf\SemanticSuggestion\Service\PageAnalysisService'
-      $fileRepository: '@TYPO3\CMS\Core\Resource\FileRepository'
 
   TalanHdf\SemanticSuggestion\Controller\SemanticBackendController:
     public: true

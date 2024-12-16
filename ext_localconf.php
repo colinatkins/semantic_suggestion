@@ -64,6 +64,15 @@ defined('TYPO3') or die();
         ];
     }
 
+    // Register scheduler task
+    $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['scheduler']['tasks'][\TalanHdf\SemanticSuggestion\Task\GenerateSimilaritiesTask::class] = [
+        'extension' => 'semantic_suggestion',
+        'title' => 'LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang.xlf:task.generateSimilarities.title',
+        'description' => 'LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang.xlf:task.generateSimilarities.description',
+        'additionalFields' => ''
+    ];
+
+
     $GLOBALS['TYPO3_CONF_VARS']['LOG']['TalanHdf']['SemanticSuggestion']['writerConfiguration'] = [
         \TYPO3\CMS\Core\Log\LogLevel::DEBUG => [
             \TYPO3\CMS\Core\Log\Writer\FileWriter::class => [

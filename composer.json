@@ -2,7 +2,7 @@
     "name": "talan-hdf/semantic-suggestion",
     "type": "typo3-cms-extension",
     "description": "TYPO3 extension for suggesting semantically related pages",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "license": "GPL-2.0-or-later",
     "authors": [
         {
@@ -23,6 +23,12 @@
     "extra": {
         "typo3/cms": {
             "extension-key": "semantic_suggestion"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "typo3/cms-composer-installers": true,
+            "typo3/class-alias-loader": true
         }
     }
 }

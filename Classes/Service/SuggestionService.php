@@ -274,11 +274,11 @@ class SuggestionService
             }
 
             $excerpt = $this->prepareExcerpt($pageData, (int)($this->settings['excerptLength'] ?? 150));
+            $pageData['media'] = $this->getPageMedia($similarPageId);
             $suggestions[$similarPageId] = [
                 'similarity' => $similarity['similarity_score'],
                 'data' => $pageData,
                 'excerpt' => $excerpt,
-                'media' => $this->getPageMedia($similarPageId),
             ];
         }
 

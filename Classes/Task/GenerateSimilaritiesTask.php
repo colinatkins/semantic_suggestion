@@ -225,6 +225,14 @@ class GenerateSimilaritiesTask extends AbstractTask
             $bulkInserts = [];
             $now = time();
             
+            // Log du seuil utilisé pour le filtrage
+            $this->logger->info('Using threshold for filtering', ['threshold' => $proximityThreshold]);
+            
+            // Pour tester, forcer temporairement une valeur très basse
+            //$proximityThreshold = 0.05; // <-- AJOUTEZ CETTE LIGNE POUR TESTER
+            
+            $this->logger->info('Using FORCED threshold for testing', ['threshold' => $proximityThreshold]);
+            
             foreach ($analysisData['results'] as $pageId => $pageData) {
                 foreach ($pageData['similarities'] as $similarPageId => $similarity) {
                     // Ne stocker que les similarités au-dessus du seuil

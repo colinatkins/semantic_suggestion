@@ -710,6 +710,15 @@ private function getAllSubpages(int $parentId, int $depth = 0): array
             'finalSimilarity' => $finalSimilarity
         ]);
 
+        $this->logDebug('Similarity calculation details', [
+            'page1' => $page1['uid'] ?? 'unknown',
+            'page2' => $page2['uid'] ?? 'unknown',
+            'semanticSimilarity' => $semanticSimilarity,
+            'recencyBoost' => $recencyBoost,
+            'recencyWeight' => $recencyWeight,
+            'finalSimilarity' => $finalSimilarity
+        ]);
+
         return [
             'semanticSimilarity' => $semanticSimilarity,
             'recencyBoost' => $recencyBoost,

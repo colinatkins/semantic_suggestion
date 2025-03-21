@@ -9,16 +9,31 @@ use TYPO3\CMS\Core\Domain\Repository\PageRepository;
 use TYPO3\CMS\Core\Pagination\ArrayPaginator;
 use TYPO3\CMS\Core\Resource\FileRepository;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
 class SuggestionService
 {
+    protected array $settings = [];
+
     public function __construct(
         protected PageAnalysisService $pageAnalysisService,
         protected FileRepository $fileRepository,
         protected PageRepository $pageRepository,
-        protected UtilityService $utility
-    ) {}
+        protected UtilityService $utility,
+        protected ConfigurationManagerInterface $configurationManager
+    ) {
+        // Initialiser les settings depuis le ConfigurationManager
+        $this->initializeSettings();
+    }
+    
+    protected function initializeSettings(): void
+    {
+        $this->settings = $this->configurationManager->getConfiguration(
+            ConfigurationManagerInterface::CONFIGURATION_TYPE_SETTINGS,
+            'semanticsuggestion_suggestions'
+        );
+    }
 
     public function generateSuggestions(array $controllerSettings, int $currentPageId, int $currentPage, int $itemsPerPage): array
     {
@@ -27,15 +42,23 @@ class SuggestionService
         $proximityThreshold = isset($controllerSettings['proximityThreshold']) ? (float)$controllerSettings['proximityThreshold'] : 0.3;
         $excludePages = GeneralUtility::intExplode(',', $controllerSettings['excludePages'] ?? '', true);
         $maxSuggestions = isset($controllerSettings['maxSuggestions']) ? (int)$controllerSettings['maxSuggestions'] : 3; // Default to 3 if not set
-        $currentLanguageUid =
-        $this->utility->getCurrentLanguageUid();
+        $excerptLength = isset($controllerSettings['excerptLength']) ? (int)$controllerSettings['excerptLength'] : 150;
+        $currentLanguageUid = $this->utility->getCurrentLanguageUid();
 
         $pages = $this->getPages($parentPageId, $depth);
         $analysisData = $this->pageAnalysisService->analyzePages($pages, $currentLanguageUid);
         $analysisResults = $analysisData['results'] ?? [];
 
-        $currentLanguageUid = $this->utility->getCurrentLanguageUid();
-        $suggestions = $this->findSimilarPages($analysisResults, $currentPageId, $proximityThreshold, $excludePages, $currentLanguageUid, $maxSuggestions);
+        $suggestions = $this->findSimilarPages(
+            $analysisResults, 
+            $currentPageId, 
+            $proximityThreshold, 
+            $excludePages, 
+            $currentLanguageUid, 
+            $maxSuggestions,
+            $excerptLength,
+            $controllerSettings
+        );
 
         // Pagination des suggestions
         $paginator = new ArrayPaginator($suggestions, $currentPage, $itemsPerPage);
@@ -84,7 +107,6 @@ class SuggestionService
             'analysisResults' => $analysisResults,
             'proximityThreshold' => $proximityThreshold,
             'maxSuggestions' => $maxSuggestions,
-            'debugLogs' => $this->debugLogs,
         ];
     }
 
@@ -100,13 +122,15 @@ class SuggestionService
         $maxSuggestions = (int)($this->settings['maxSuggestions'] ?? 3);
         $currentLanguageUid = $this->utility->getCurrentLanguageUid();
         $excludePages = GeneralUtility::intExplode(',', $this->settings['excludePages'] ?? '', true);
+        $excerptLength = (int)($this->settings['excerptLength'] ?? 150);
 
         $suggestions = $this->findSimilarPagesFromDatabase(
             $currentPageId,
             $proximityThreshold,
             $excludePages,
             $currentLanguageUid,
-            $maxSuggestions
+            $maxSuggestions,
+            $excerptLength
         );
 
         // Implémenter la pagination
@@ -138,9 +162,10 @@ class SuggestionService
         ];
     }
 
-    protected function prepareExcerpt(array $pageData, int $excerptLength): string
+    protected function prepareExcerpt(array $pageData, int $excerptLength, array $settings = []): string
     {
-        $sources = GeneralUtility::trimExplode(',', $controllerSettings['excerptSources'] ?? 'bodytext,description,abstract', true);
+        // Utiliser le paramètre $settings si fourni, sinon utiliser $this->settings
+        $sources = GeneralUtility::trimExplode(',', $settings['excerptSources'] ?? $this->settings['excerptSources'] ?? 'bodytext,description,abstract', true);
 
         foreach ($sources as $source) {
             $content = $source === 'bodytext' ? ($pageData['tt_content'] ?? '') : ($pageData[$source] ?? '');
@@ -157,8 +182,16 @@ class SuggestionService
         return '';
     }
 
-    protected function findSimilarPages(array $analysisResults, int $currentPageId, float $threshold, array $excludePages, int $currentLanguageUid, int $maxSuggestions): array
-    {
+    protected function findSimilarPages(
+        array $analysisResults, 
+        int $currentPageId, 
+        float $threshold, 
+        array $excludePages, 
+        int $currentLanguageUid, 
+        int $maxSuggestions,
+        int $excerptLength = 150,
+        array $settings = []
+    ): array {
         $this->utility->logDebug('Finding similar pages', [
             'currentPageId' => $currentPageId,
             'threshold' => $threshold,
@@ -190,13 +223,13 @@ class SuggestionService
 
                 $pageData = $pageRepository->getPage($pageId);
                 $pageData['tt_content'] = $this->getPageContents($pageId);
-                $excerpt = $this->prepareExcerpt($pageData, (int)($controllerSettings['excerptLength'] ?? 150));
+                $excerpt = $this->prepareExcerpt($pageData, $excerptLength, $settings);
 
                 $recencyScore = $this->calculateRecencyScore($pageData['tstamp']);
 
                 $suggestions[$pageId] = [
                     'similarity' => $similarity['score'],
-                    'commonKeywords' => implode(', ', $similarity['commonKeywords']),
+                    'commonKeywords' => implode(', ', $similarity['commonKeywords'] ?? []),
                     'relevance' => $similarity['relevance'],
                     'aboveThreshold' => true,
                     'data' => $pageData,
@@ -228,7 +261,8 @@ class SuggestionService
         float $threshold,
         array $excludePages,
         int $currentLanguageUid,
-        int $maxSuggestions
+        int $maxSuggestions,
+        int $excerptLength = 150
     ): array {
         $this->utility->logDebug('Finding similar pages from database', [
             'currentPageId' => $currentPageId,
@@ -273,7 +307,7 @@ class SuggestionService
                 continue;
             }
 
-            $excerpt = $this->prepareExcerpt($pageData, (int)($this->settings['excerptLength'] ?? 150));
+            $excerpt = $this->prepareExcerpt($pageData, $excerptLength);
             $pageData['media'] = $this->getPageMedia($similarPageId);
             $suggestions[$similarPageId] = [
                 'similarity' => $similarity['similarity_score'],
@@ -285,7 +319,6 @@ class SuggestionService
         $this->utility->logDebug('Suggestions prepared', ['count' => count($suggestions)]);
         return $suggestions;
     }
-
 
     protected function calculateRecencyScore($timestamp)
     {
@@ -331,10 +364,6 @@ class SuggestionService
 
     protected function getPages(int $parentPageId, int $depth): array
     {
-        if ($this->pageRepository === null) {
-            $this->pageRepository = GeneralUtility::makeInstance(PageRepository::class);
-        }
-
         $pages = [];
         $languageAspect = GeneralUtility::makeInstance(Context::class)->getAspect('language');
         $languageId = $languageAspect->getId();
@@ -345,7 +374,7 @@ class SuggestionService
             'sorting',
             '',
             false,
-            '',
+            false, // Changé de '' à false pour éviter l'erreur de type
             $languageId
         );
 
@@ -359,5 +388,4 @@ class SuggestionService
         $this->utility->logDebug('Retrieved pages', ['pages' => $pages]);
         return $pages;
     }
-
 }

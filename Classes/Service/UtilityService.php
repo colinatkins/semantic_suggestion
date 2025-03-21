@@ -10,10 +10,13 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 class UtilityService
 {
     protected array $debugLogs = [];
+    protected LoggerInterface $logger;
 
-
-    public function __construct(protected PageAnalysisService $pageAnalysisService, protected LoggerInterface $logger)
-    {
+    public function __construct(
+        protected PageAnalysisService $pageAnalysisService, 
+        LogManager $logManager
+    ) {
+        $this->logger = $logManager->getLogger(__CLASS__);
     }
 
     public function getCurrentLanguageUid(): int
@@ -34,5 +37,4 @@ class UtilityService
     {
         return $this->debugLogs;
     }
-
 }

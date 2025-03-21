@@ -302,7 +302,7 @@ class SemanticBackendController extends ActionController
     {
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
             ->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
-
+    
         // Récupérer toutes les similarités pour les pages enfants
         $similarities = $queryBuilder
             ->select('*')
@@ -314,37 +314,37 @@ class SemanticBackendController extends ActionController
             )
             ->executeQuery()
             ->fetchAllAssociative();
-
+    
         // Préparer la structure de données
         $analysisResults = [];
         $pageIds = [];
-
+    
         foreach ($similarities as $similarity) {
             $pageIds[] = $similarity['page_id'];
             $pageIds[] = $similarity['similar_page_id'];
-
+    
             if (!isset($analysisResults[$similarity['page_id']])) {
                 $analysisResults[$similarity['page_id']] = [
                     'similarities' => [],
                     'sys_language_uid' => $currentLanguageUid
                 ];
             }
-
+    
             // Ne pas inclure les pages exclues
             if (!in_array($similarity['similar_page_id'], $excludePages)) {
                 $analysisResults[$similarity['page_id']]['similarities'][$similarity['similar_page_id']] = [
                     'score' => (float)$similarity['similarity_score'],
-                    'relevance' => $this->determineRelevance((float)$similarity['similarity_score'])
+                    'relevance' => $this->determineRelevanceLevel((float)$similarity['similarity_score'])
                 ];
             }
         }
-
+    
         // Récupérer les informations des pages concernées
         $pageIds = array_unique($pageIds);
         if (!empty($pageIds)) {
             $pageData = $this->getPageRepository()
                 ->getMenuForPages($pageIds, '*', 'sorting', 'AND hidden=0 AND deleted=0');
-
+    
             // Ajouter les titres et autres informations des pages
             foreach ($analysisResults as $pageId => &$data) {
                 if (isset($pageData[$pageId])) {
@@ -353,7 +353,7 @@ class SemanticBackendController extends ActionController
                 }
             }
         }
-
+    
         return [
             'results' => $analysisResults,
             'metrics' => [
@@ -363,6 +363,20 @@ class SemanticBackendController extends ActionController
                 'fromCache' => false,
             ],
         ];
+    }
+    
+    /**
+     * Détermine le niveau de pertinence basé sur un score de similarité
+     */
+    protected function determineRelevanceLevel(float $similarityScore): string
+    {
+        if ($similarityScore > 0.7) {
+            return 'High';
+        } elseif ($similarityScore > 0.4) {
+            return 'Medium';
+        } else {
+            return 'Low';
+        }
     }
 
 

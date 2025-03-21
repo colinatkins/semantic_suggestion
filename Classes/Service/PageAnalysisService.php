@@ -67,13 +67,9 @@ class PageAnalysisService implements LoggerAwareInterface
 
     private function logDebug(string $message, array $context = []): void
     {
-        // Forcer le log pour le débogage
-        $this->logger->debug($message, $context);
-        
-        // Ancien code commenté pour référence
-        // if ($this->settings['debugMode']) {
-        //     $this->logger->debug($message, $context);
-        // }
+        if ($this->settings['debugMode']) {
+            $this->logger->debug($message, $context);
+        }
     }
 
     private function logInfo(string $message, array $context = []): void

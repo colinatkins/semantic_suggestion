@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Changelog for Semantic Suggestion Extension
 
+# changelog Version v1.5.2
+
+## Key Improvements
+
+### Database Storage
+- Similarity scores now stored in database (`tx_semanticsuggestion_similarities`) instead of TYPO3 cache
+- Enhanced persistence (survives cache clearing operations)
+- Improved performance for larger websites
+
+### Scheduler Task
+- New automated task for background similarity calculations
+- Configure frequency and timing to run during off-peak hours
+- Easily maintain up-to-date suggestions without manual intervention
+
+### Additional Features
+- Added stopwords support for multiple languages
+- Introduced debug mode (`plugin.tx_semanticsuggestion_suggestions.settings.debugMode = 1`)
+- Enhanced backend module with improved statistics display
+- Optimized for TYPO3 12 and 13
+
+## Migration
+- The extension will automatically create the required database table
+- No manual steps required when upgrading
+
 
 # Changelog Version 1.3.2
 

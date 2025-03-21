@@ -1,4 +1,4 @@
-# 🧠 TYPO3 Extension: Semantic Suggestion
+# TYPO3 Extension: Semantic Suggestion
 
 ## Join Our Community on Slack
 
@@ -16,7 +16,7 @@ We look forward to seeing you there and engaging with you!
 
 > Elevate your TYPO3 website with intelligent, content-driven recommendations
 
-## 🌟 Introduction
+## Introduction
 
 The Semantic Suggestion extension revolutionizes the way related content is presented on TYPO3 websites. Moving beyond traditional "more like this" functionalities based on categories and taxonomies, this extension employs advanced semantic analysis to create genuinely relevant content connections.
 
@@ -33,47 +33,53 @@ While the Semantic Suggestion extension offers powerful capabilities, it's impor
 
 - 📊 The similarity calculation process scales exponentially with the number of pages.
 - ⏳ For sites with over 500 pages, the initial calculation may take up to 30 seconds, depending on server capacity.
-- 💡 We recommend using the backend module to assess the caching time for your specific setup.
-- 🔄 The cache is automatically reset when a page or content is modified, ensuring up-to-date similarity calculations.
+- 💡 We recommend using the backend module to assess performance for your specific setup.
+- 🔄 Similarity scores are stored in the database and updated via a scheduler task, ensuring optimal performance.
 
-> 📌 **Pro Tip**: Utilize the backend module to monitor performance and optimize settings for your specific use case.
+> **Pro Tip**: Utilize the backend module to monitor performance and optimize settings for your specific use case.
 
 By leveraging the power of semantic analysis, this extension provides a superior alternative to traditional related content plugins, offering more accurate and valuable content suggestions to your users.
 
 ---
 
-## New in Version 1.4.0
+## New in Version 2.0.0
+
+### Database-Driven Storage
+The extension now stores similarity scores in the database instead of TYPO3's cache system, providing:
+- Improved persistence of calculated similarity data
+- Better performance for large websites
+- Reduced system overhead during page loads
+- More resilient data storage that survives cache clearing operations
+
+### Scheduler Task Integration
+A new scheduler task is available to automatically update similarity scores:
+- Schedule calculations during low-traffic periods
+- Ensure up-to-date suggestions without affecting user experience
+- Configure recalculation frequency based on your content update patterns
+- Monitor calculation progress and performance through the scheduler interface
+
+### Enhanced Performance
+The new storage architecture delivers significant performance improvements:
+- Faster page load times for sites with many pages
+- Better resource utilization during similarity calculations
+- Reduced CPU and memory usage during normal operation
+- Smoother user experience, especially on large TYPO3 installations
 
 ### Stopwords Support
 The extension now includes stopwords functionality, significantly improving the accuracy of content analysis. Stopwords are common words (such as "the", "is", "at") that are filtered out before processing the content. This feature enhances the relevance of semantic suggestions by focusing on meaningful content.
 
 ### Debug Mode
-A new debug mode has been introduced, which can be activated via TypoScript:
+A new debug mode can be activated via TypoScript:
 
 ```typoscript
 plugin.tx_semanticsuggestion_suggestions.settings.debugMode = 1
+```
 
 When enabled, this mode provides:
-
-Detailed debug information in the backend interface
-Comprehensive logs in public/typo3temp/logs/semantic_suggestion.log
+- Detailed debug information in the backend interface
+- Comprehensive logs in public/typo3temp/logs/semantic_suggestion.log
 
 This feature is invaluable for developers and administrators looking to fine-tune the extension's performance or troubleshoot issues.
-
-### Backend Module Enhancements
-
-The backend module has been significantly improved:
-
-Optimized "Top 5 Most Similar Page Pairs" display, eliminating duplicate entries
-Enhanced statistics and visualizations for better content insights
-Improved performance for large-scale page analyses
-
-### For Developers
-
-New API methods are available to access stopwords statistics
-The similarity calculation algorithm has been optimized, providing more accurate results
-
-
 
 ## 📚 Table of Contents
 
@@ -84,22 +90,17 @@ The similarity calculation algorithm has been optimized, providing more accurate
 - [Configuration](#-configuration)
 - [Usage](#-usage)
 - [Backend Module](#-backend-module)
+- [Scheduler Task](#-scheduler-task)
 - [Similarity Logic](#-similarity-logic)
 - [Display Customization](#-display-customization)
 - [Multilingual Support](#-multilingual-support)
 - [Debugging and Maintenance](#-debugging-and-maintenance)
 - [Security](#-security)
 - [Performance](#-performance)
-- [File Structure](#-file-structure)
 - [Unit Tests](#-unit-tests)
 - [Contributing](#-contributing)
 - [License](#-license)
 - [Support](#-support)
-
-
-
-### Frontend View
-![Frontend view with the same theme](Documentation/Medias/frontend_on_the_same_theme_view.jpg)
 
 ## 🚀 Features
 
@@ -107,7 +108,8 @@ The similarity calculation algorithm has been optimized, providing more accurate
 - 📊 Displays title, associated media, and enhanced text excerpt of suggested pages
 - ⚙️ Highly configurable via TypoScript
 - 🎛 Customizable parent page ID, proximity threshold, and search depth
-- 💾 Optimized performance with database caching of proximity scores
+- 💾 Database storage of similarity scores for optimal performance
+- ⏱️ Scheduler task for automated similarity calculations
 - 🌐 Built-in multilingual support
 - 🧩 Improved compatibility with various TYPO3 content structures, including Bootstrap Package
 - 🚫 Option to exclude specific pages from analysis and suggestions
@@ -186,6 +188,7 @@ The `analyzedFields` section allows you to configure the importance of different
 - `recursive`: The search depth in the page tree (0 = only direct children)
 - `excludePages`: Comma-separated list of page UIDs to exclude from analysis and suggestions
 - `recencyWeight`: Weight of recency in similarity calculation (0-1) 
+- `debugMode`: Enable detailed logging and debugging information (0 or 1)
 </details>
 
 ### The Weight of Recency in Similarity Calculation (0-1)
@@ -218,9 +221,7 @@ Consider your specific use case:
 - General blog: Medium recency weight
 </details>
 
-
 ## 🖥 Usage
-
 
 ### In Fluid Templates
 
@@ -284,60 +285,27 @@ Access the module under the "Web" menu in the TYPO3 backend.
 
 > 💡 **Tip**: The effectiveness of semantic analysis depends on content quality and quantity. Ensure your pages have meaningful titles, descriptions, and content for best results.
 
-### Performance Metrics
+## ⏱️ Scheduler Task
 
-![Backend module performance metrics](Documentation/Medias/backend_module_performance_metrics.png)
-![Backend module performance metrics - No cache](Documentation/Medias/backend_module_performance_metrics_no_cache.png)
+The extension now includes a scheduler task to automate similarity calculations:
 
-The backend module provides crucial performance metrics to help optimize the extension's operation:
+### Features
 
-<details>
-<summary><strong>Execution Time (seconds)</strong></summary>
+- 🔄 **Automated Calculations**: Schedule similarity analysis to run automatically
+- ⏰ **Configurable Frequency**: Set how often calculations should run (hourly, daily, weekly)
+- 🎯 **Site-Specific Analysis**: Configure the task to focus on specific parent pages
+- 💪 **Resource Management**: Run intensive calculations during off-peak hours
+- 📝 **Detailed Logging**: Track calculation performance and issues through TYPO3's logging system
 
-- **What**: Total time for semantic analysis, including page retrieval, calculations, and caching
-- **Interpretation**: 
-  - Lower is better
-  - High values may indicate need for content structure optimization or increased caching
-  - 0.00 seconds typically means results were cached
-</details>
+### Configuration
 
-<details>
-<summary><strong>Total Pages Analyzed</strong></summary>
+1. Go to **SCHEDULER** > **Add task**
+2. Select **Semantic Suggestion: Generate Similarities**
+3. Configure frequency and start time
+4. Set parent page ID and recursive depth
+5. Save and enable the task
 
-- **What**: Number of pages included in the semantic analysis
-- **Interpretation**: 
-  - Depends on page tree structure and configured analysis depth
-  - Higher numbers may increase accuracy but also execution time
-</details>
-
-<details>
-<summary><strong>Similarity Calculations</strong></summary>
-
-- **What**: Total number of page-to-page similarity comparisons
-- **Calculation**: Typically `n * (n-1) / 2`, where `n` is the number of pages analyzed
-- **Interpretation**: 
-  - Higher numbers indicate more comprehensive analysis
-  - May impact performance with large page sets
-</details>
-
-<details>
-<summary><strong>Results from Cache</strong></summary>
-
-- **What**: Indicates whether results were retrieved from cache (Yes/No)
-- **Interpretation**: 
-  - "Yes" means faster execution (cached results)
-  - "No" indicates a fresh analysis was performed
-  - Frequent "No" results might suggest too frequent cache clearing or rapidly changing content
-</details>
-
-#### Optimizing Performance
-
-1. **Caching**: Adjust caching configuration to match your update frequency
-2. **Analysis Depth**: Balance comprehensiveness with performance
-3. **Excluded Pages**: Use `excludePages` setting to omit irrelevant pages
-4. **Content Structure**: Organize content to minimize analyzed pages without compromising quality
-
-Monitor these metrics to fine-tune the extension's configuration for your specific use case.
+> 💡 **Best Practice**: For large sites, schedule the task to run during off-peak hours to minimize impact on site performance.
 
 ## 🧮 Similarity Logic
 
@@ -346,7 +314,7 @@ The extension employs a custom similarity calculation to determine related pages
 1. **Data Gathering**: Collects title, description, keywords, and content for each subpage of the specified parent page.
 2. **Similarity Calculation**: Compares page pairs using a word intersection and union method. The similarity score is the ratio of common words to total unique words, weighted by field importance.
 3. **Proximity Threshold**: Only pages with similarity scores above the configured threshold are considered related and displayed.
-4. **Caching Scores**: Calculated scores are stored in `tx_semanticsuggestion_scores` table for performance optimization. These are updated periodically or when page content changes.
+4. **Database Storage**: Calculated scores are stored in the `tx_semanticsuggestion_similarities` table for optimal performance. These are updated based on your scheduler task configuration.
 
 ## 🎨 Display Customization
 
@@ -402,89 +370,12 @@ The Semantic Suggestion extension implements several security measures:
 
 Optimized for efficient operation, even with large numbers of pages:
 
-- 💾 Caching of similarity scores in the database
-- 🔄 Periodic score updates and refresh on content changes
+- 💾 Database storage of similarity scores for optimal performance
+- ⏱️ Scheduled background processing via the scheduler task
 - 🚀 Optimized content retrieval process
 - 🎯 Efficient handling of excluded pages
 - ⚖️ Batch processing of page analysis for server load management
 
-## 📁 File Structure and Logic
-
-```
-semantic_suggestion/
-├── Classes/
-│   ├── Controller/
-│   │   ├── SemanticBackendController.php
-│   │   └── SuggestionsController.php
-│   └── Service/
-│       └── PageAnalysisService.php
-├── Configuration/
-│   ├── Backend/
-│   │   ├── Modules.php
-│   │   └── Routes.php
-│   ├── TCA/
-│   │   └── Overrides/
-│   │       ├── sys_template.php
-│   │       └── tt_content.php
-│   ├── TypoScript/
-│   │   ├── constants.typoscript
-│   │   └── setup.typoscript
-│   └── Services.yaml
-├── Documentation/
-│   ├── Index.rst
-│   ├── Installation/
-│   │   └── Index.rst
-│   ├── Introduction/
-│   │   └── Index.rst
-│   └── Medias/
-│       ├── backend_module.png
-│       ├── backend_module_performance_metrics.jpg
-│       └── frontend_on_the_same_theme_view.jpg
-├── Resources/
-│   ├── Private/
-│   │   ├── Language/
-│   │   │   ├── locallang.xlf
-│   │   │   ├── locallang_be.xlf
-│   │   │   ├── locallang_mod.xlf
-│   │   │   └── locallang_semanticproximity.xlf
-│   │   ├── Layouts/
-│   │   │   └── Default.html
-│   │   └── Templates/
-│   │       ├── SemanticBackend/
-│   │       │   ├── Index.html
-│   │       │   └── List.html
-│   │       └── Suggestions/
-│   │           └── List.html
-│   └── Public/
-│       ├── Css/
-│       │   └── SemanticSuggestion.css
-│       └── Icons/
-│           ├── Extension.svg
-│           ├── module-semantic-suggestion.svg
-│           └── user_mod_semanticproximity.svg
-├── Tests/
-│   ├── Fixtures/
-│   │   └── pages.xml
-│   ├── Integration/
-│   │   └── Service/
-│   │       └── PageAnalysisServiceIntegrationTest.php
-│   └── Unit/
-│       └── Service/
-│           └── PageAnalysisServiceTest.php
-├── .env
-├── .gitignore
-├── CHANGELOG.md
-├── IMPROVEMENTS.MD
-├── LICENSE
-├── README.md
-├── ROADMAP_TO_STABLE.md
-├── composer.json
-├── ext_conf_template.txt
-├── ext_emconf.php
-├── ext_localconf.php
-├── ext_tables.php
-└── phpunit.xml.dist
-```
 ## 🧪 Unit Tests
 
 The Semantic Suggestion extension includes a comprehensive suite of unit tests to ensure reliability and correctness of core functionalities, with a focus on the similarity calculation algorithm.
@@ -495,85 +386,8 @@ The Semantic Suggestion extension includes a comprehensive suite of unit tests t
 2. **Similarity Calculation**: Ensures accuracy of page similarity calculations using cosine similarity.
 3. **Field-Specific Similarity**: Tests the calculation of similarity scores for individual fields (title, content, keywords, etc.).
 4. **Recency Boost Integration**: Validates the integration of recency factors in the final similarity score.
-5. **Page Data Preparation**: Checks correct data preparation and preprocessing for similarity analysis.
-6. **Common Keywords Detection**: Tests functionality for finding shared keywords between pages.
-7. **Relevance Determination**: Validates logic for determining relevance based on calculated similarity scores.
-8. **Edge Case Handling**: Tests behavior with empty pages, single-word content, and extremely large content.
-9. **Multilingual Content Handling**: Verifies correct similarity calculation for content in different languages.
-10. **Performance Testing**: Evaluates the efficiency of similarity calculations with large datasets.
-11. **Cache Handling**: Ensures proper use of caching mechanisms for improved performance.
-
-### Running Tests
-
-To run the unit tests:
-
-1. Ensure you have a development environment set up with DDEV.
-2. Open a terminal and navigate to your project root.
-3. Execute the following command:
-
-```bash
-ddev exec vendor/bin/phpunit -c packages/semantic_suggestion/phpunit.xml.dist --testdox --colors=always
-```
-
-For specific tests, add the `--filter` option:
-
-```bash
-ddev exec vendor/bin/phpunit -c packages/semantic_suggestion/phpunit.xml.dist --filter testMethodName
-```
-
-
-## Commandes de test pour PageAnalysisService
-
-### Test de tous les tests dans PageAnalysisServiceTest
-
-Pour exécuter tous les tests dans la classe PageAnalysisServiceTest :
-
-```bash
-ddev exec vendor/bin/phpunit -c packages/semantic_suggestion/phpunit.xml.dist --testdox --colors=always --filter PageAnalysisServiceTest
-```
-
-### Test d'une méthode spécifique
-
-Pour tester une méthode spécifique, par exemple `testGetWeightedWordsReturnsCorrectWeights` :
-
-```bash
-ddev exec vendor/bin/phpunit -c packages/semantic_suggestion/phpunit.xml.dist --testdox --colors=always --filter "PageAnalysisServiceTest::testGetWeightedWordsReturnsCorrectWeights"
-```
-
-### Test avec un motif de nom
-
-Pour exécuter tous les tests contenant "Similarity" dans leur nom :
-
-```bash
-ddev exec vendor/bin/phpunit -c packages/semantic_suggestion/phpunit.xml.dist --testdox --colors=always --filter "/::test.*Similarity/"
-```
-
-### Exécution avec couverture de code
-
-Pour exécuter les tests avec un rapport de couverture de code :
-
-```bash
-ddev exec vendor/bin/phpunit -c packages/semantic_suggestion/phpunit.xml.dist --testdox --colors=always --filter PageAnalysisServiceTest --coverage-text
-```
-
-### Test en mode verbeux
-
-Pour obtenir plus de détails sur l'exécution des tests :
-
-```bash
-ddev exec vendor/bin/phpunit -c packages/semantic_suggestion/phpunit.xml.dist --testdox --colors=always --filter PageAnalysisServiceTest -v
-```
-
-
-### Interpreting Results
-
-- ✅ Green checkmarks: Passed tests
-- ❌ Red crosses: Failed tests
-- ⚠️ Yellow exclamation marks: Risky or incomplete tests
-
-Detailed output helps quickly identify and address any issues.
-
-> 💡 **Tip**: Regular test execution is recommended, especially after code changes, to ensure continued functionality and catch regressions early.
+5. **Database Storage Integration**: Tests proper storage and retrieval of similarity data from the database.
+6. **Scheduler Task Functionality**: Verifies the correct operation of the scheduler task.
 
 ## 🤝 Contributing
 
@@ -600,11 +414,11 @@ For support and further information:
    Email: cyril.wolfangel@gmail.com
 
 🐛 **Bug Reports and Feature Requests**:
-   Use the [GitHub issue tracker](https://github.com/your-username/semantic-suggestion/issues)
+   Use the [GitHub issue tracker](https://github.com/friteuseb/semantic_suggestion/issues)
 
 📚 **Documentation and Updates**:
-   Visit our [GitHub repository](https://github.com/your-username/semantic-suggestion)
+   Visit our [GitHub repository](https://github.com/friteuseb/semantic_suggestion)
 
 ---
 
-📘 [Full Documentation](https://github.com/talan-hdf/semantic-suggestion/wiki) | 🐛 [Report Bug](https://github.com/talan-hdf/semantic-suggestion/issues) | 💡 [Request Feature](https://github.com/talan-hdf/semantic-suggestion/issues)
+📘 [Full Documentation](https://github.com/friteuseb/semantic_suggestion/wiki) | 🐛 [Report Bug](https://github.com/friteuseb/semantic_suggestion/issues) | 💡 [Request Feature](https://github.com/friteuseb/semantic_suggestion/issues)

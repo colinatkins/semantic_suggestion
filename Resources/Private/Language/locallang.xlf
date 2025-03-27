@@ -12,6 +12,12 @@
             <trans-unit id="suggestions.noSuggestionsFound">
                 <source>No Suggestions found</source>
             </trans-unit>
+            <trans-unit id="task.generateSimilarities.title">
+                <source>Generate Semantic Similarities</source>
+            </trans-unit>
+            <trans-unit id="task.generateSimilarities.description">
+                <source>Generates and stores semantic similarities between pages for all sites and languages</source>
+            </trans-unit>
         </body>
     </file>
 </xliff>

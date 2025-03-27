@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Changelog for Semantic Suggestion Extension
 
+
+## changelog [2.0.0-beta] - 2025-03-27
+
+### Added
+
+-   **TYPO3 v13 Support:** Extension fully compatible with TYPO3 v13.x.
+-   **Dual Controller Architecture:** Implemented separate backend controllers (`LegacySemanticBackendController` for v12, `SemanticBackendController` for v13+) to handle version differences gracefully.
+-   **Conditional Configuration:** Added version checks in configuration files (`Services.php`, `Modules.php`, `Routes.php`) to load appropriate classes and settings for TYPO3 v12 and v13+.
+
+### Changed
+
+-   **Refactored Backend Module:** Adapted backend module logic for compatibility across TYPO3 v12 and v13.
+-   **Dependency Injection:** Updated `Configuration/Services.php` to correctly register controllers and their dependencies based on the TYPO3 version.
+-   **Module Registration:** Updated `Configuration/Backend/Modules.php` to utilize the appropriate controller class depending on the TYPO3 version.
+-   **Code Modernization:** Applied modern PHP features (strict types, return types, Enums) primarily within the v13+ controller (`SemanticBackendController`).
+
+### Fixed
+
+-   **v12 Constructor Error:** Resolved `ArgumentCountError` related to the `SemanticBackendController` constructor on TYPO3 v12 instances.
+-   **Backend Statistics:** Corrected `Call to undefined method calculateStatistics` by using correctly prepared statistics data.
+-   **Backend Rendering:** Fixed `Call to undefined method setContent` on `ModuleTemplate` by removing manual view rendering and relying on `renderResponse()`.
+-   **Backend Template Loading:** Addressed `InvalidTemplateResourceException` (template not found errors like `Default/Index.html`) by explicitly providing the correct template path (`SemanticBackend/Index`) to `renderResponse()`.
+-   **v12 Method Signature Compatibility:** Fixed `Fatal error: Declaration of addFlashMessage() must be compatible` by ensuring the DI container registers the `LegacySemanticBackendController` (with the compatible signature) for TYPO3 v12.
+
+
+# changelog Version v1.5.2
+
+## Key Improvements
+
+### Database Storage
+- Similarity scores now stored in database (`tx_semanticsuggestion_similarities`) instead of TYPO3 cache
+- Enhanced persistence (survives cache clearing operations)
+- Improved performance for larger websites
+
+### Scheduler Task
+- New automated task for background similarity calculations
+- Configure frequency and timing to run during off-peak hours
+- Easily maintain up-to-date suggestions without manual intervention
+
+### Additional Features
+- Added stopwords support for multiple languages
+- Introduced debug mode (`plugin.tx_semanticsuggestion_suggestions.settings.debugMode = 1`)
+- Enhanced backend module with improved statistics display
+- Optimized for TYPO3 12 and 13
+
+## Migration
+- The extension will automatically create the required database table
+- No manual steps required when upgrading
+
+
 # Changelog Version 1.4.0
 
 ## Added
@@ -26,7 +76,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Developer Notes
 - Added new configuration options in TypoScript for fine-tuning the analysis process
 - Expanded API to include stopwords statistics for more detailed content insights
-
 
 # Changelog Version 1.3.2
 

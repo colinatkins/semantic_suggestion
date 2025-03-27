@@ -1,631 +1,256 @@
 <?php
 namespace TalanHdf\SemanticSuggestion\Controller;
 
+// --- Imports ---
 use Psr\Http\Message\ResponseInterface;
+use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Backend\Template\ModuleTemplateFactory;
-use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
-use TalanHdf\SemanticSuggestion\Service\PageAnalysisService;
-use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
+use TYPO3\CMS\Core\Log\LogManager;
+use TYPO3\CMS\Extbase\Mvc\Controller\ActionController; // Hériter directement pour v13
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Domain\Repository\PageRepository;
-use TYPO3\CMS\Core\Site\SiteFinder;
-use Psr\Log\LoggerInterface;
-use TYPO3\CMS\Core\Cache\CacheManager;
-use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
-use TYPO3\CMS\Core\Log\LogManager;
-use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
-use TYPO3\CMS\Core\Context\Context;
+use TYPO3\CMS\Core\Messaging\FlashMessageService;
+use TYPO3\CMS\Core\Type\ContextualFeedbackSeverity;
+use TYPO3\CMS\Core\Database\ConnectionPool;
+use Doctrine\DBAL\ParameterType;
+use TalanHdf\SemanticSuggestion\Service\PageAnalysisService;
+use TalanHdf\SemanticSuggestion\Service\LanguageService;
+use TYPO3\CMS\Core\Messaging\FlashMessage; // Ajout pour addFlashMessage
+use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
+
 
 class SemanticBackendController extends ActionController
 {
+    // --- PAS de redéclaration de $settings ou $arguments (propriétés héritées) ---
+
+    // --- Propriétés pour l'Injection de Dépendances (DI) ---
     protected ModuleTemplateFactory $moduleTemplateFactory;
     protected PageAnalysisService $pageAnalysisService;
     protected ?PageRepository $pageRepository = null;
-    protected ?FrontendInterface $cache = null;
-    protected ExtensionConfiguration $extensionConfiguration;
-    protected ?CacheManager $cacheManager = null;
     protected LoggerInterface $logger;
+    protected LanguageService $languageService;
+    protected FlashMessageService $flashMessageService;
+    protected ?ConnectionPool $connectionPool = null;
 
+    // --- Constructeur pour DI (v13) ---
     public function __construct(
         ModuleTemplateFactory $moduleTemplateFactory,
         PageAnalysisService $pageAnalysisService,
-        LogManager $logManager
+        LogManager $logManager,
+        LanguageService $languageService,
+        FlashMessageService $flashMessageService,
+        PageRepository $pageRepository,
+        ConnectionPool $connectionPool = null  // Optionnel au cas où il n'est pas défini dans Services.php
     ) {
         $this->moduleTemplateFactory = $moduleTemplateFactory;
         $this->pageAnalysisService = $pageAnalysisService;
         $this->logger = $logManager->getLogger(__CLASS__);
+        $this->languageService = $languageService;
+        $this->flashMessageService = $flashMessageService;
+        $this->pageRepository = $pageRepository;
+        $this->connectionPool = $connectionPool ?? GeneralUtility::makeInstance(ConnectionPool::class);
     }
 
-
-    public function initializeObject()
-    {
-        if ($this->cacheManager === null) {
-            $this->cacheManager = GeneralUtility::makeInstance(CacheManager::class);
-        }
-    }
-
-    public function injectCacheManager(CacheManager $cacheManager): void
-    {
-        $this->cacheManager = $cacheManager;
-    }
-
-    protected function getCache(): FrontendInterface
-    {
-        if ($this->cache === null) {
-            if ($this->cacheManager === null) {
-                $this->cacheManager = GeneralUtility::makeInstance(CacheManager::class);
-            }
-            $this->cache = $this->cacheManager->getCache('semantic_suggestion');
-        }
-        return $this->cache;
-    }
-
-    private function logDebug(string $message, array $context = []): void
-    {
-        $debugMode = $this->pageAnalysisService instanceof PageAnalysisService 
-            ? ($this->pageAnalysisService->getSettings()['debugMode'] ?? false)
-            : false;
     
-        if ($debugMode && $this->logger instanceof LoggerInterface) {
-            $this->logger->debug($message, $context);  // Utilise $this->logger->debug au lieu de $this->logDebug
-        }
-    }
-    
-
-    
-    public function updateConfigurationAction(array $configuration): ResponseInterface
-    {
-        // Update the extension configuration
-        $this->extensionConfiguration->set('semantic_suggestion', $configuration);
-
-        // Update TypoScript configuration
-        $fullTypoScript = $this->configurationManager->getConfiguration(
-            ConfigurationManagerInterface::CONFIGURATION_TYPE_FULL_TYPOSCRIPT
-        );
-        $pluginSettings = &$fullTypoScript['plugin.']['tx_semanticsuggestion_suggestions.']['settings.'];
-        foreach ($configuration as $key => $value) {
-            $pluginSettings[$key] = $value;
-        }
-        $this->configurationManager->setConfiguration($fullTypoScript);
-
-        // Add a flash message to confirm the update
-        $this->addFlashMessage(
-            'The configuration has been updated successfully.',
-            'Configuration Updated',
-            \TYPO3\CMS\Core\Messaging\AbstractMessage::OK
-        );
-
-        // Redirect back to the index action
-        return $this->redirect('index');
-    }
-
-    public function injectExtensionConfiguration(ExtensionConfiguration $extensionConfiguration): void
-    {
-        $this->extensionConfiguration = $extensionConfiguration;
-    }
-
-    public function injectModuleTemplateFactory(ModuleTemplateFactory $moduleTemplateFactory): void
-    {
-        $this->moduleTemplateFactory = $moduleTemplateFactory;
-        $this->logDebug('ModuleTemplateFactory injected');
-    }
-
-    public function injectPageAnalysisService(PageAnalysisService $pageAnalysisService): void
-    {
-        $this->pageAnalysisService = $pageAnalysisService;
-        $this->logger->error('PageAnalysisService settings', ['settings' => $this->pageAnalysisService->getSettings()]);
-    }
-
-    public function injectConfigurationManager(ConfigurationManagerInterface $configurationManager): void
-    {
-        $this->configurationManager = $configurationManager;
-    }
-
-    protected function initializeAction()
-    {
-        parent::initializeAction();
-        if ($this->arguments === null) {
-            $this->arguments = new \TYPO3\CMS\Extbase\Mvc\Controller\Arguments();
-        }
-    }
-
-    protected function initializeActionMethodValidators(): void
-    {
-        if ($this->arguments === null) {
-            $this->arguments = new \TYPO3\CMS\Extbase\Mvc\Controller\Arguments();
-        }
-        parent::initializeActionMethodValidators();
-    }
-
-    protected function getPageRepository(): PageRepository
-    {
-        if ($this->pageRepository === null) {
-            $this->pageRepository = GeneralUtility::makeInstance(PageRepository::class);
-        }
-        return $this->pageRepository;
-    }
-
-    public function indexAction(): ResponseInterface
-    {
-
-        $this->logDebug('Début de indexAction');
-        $mergedData = [];
-        $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
-    
-        try {
-            $fullTypoScript = $this->configurationManager->getConfiguration(
-                ConfigurationManagerInterface::CONFIGURATION_TYPE_FULL_TYPOSCRIPT
-            );
-    
-            $extensionConfig = $fullTypoScript['plugin.']['tx_semanticsuggestion_suggestions.']['settings.'] ?? [];
-            $this->pageAnalysisService->setSettings($extensionConfig);
-            $this->logDebug('Debug mode in controller', ['debugMode' => $this->pageAnalysisService->getSettings()['debugMode']]);
-
-            $parentPageId = (int)($extensionConfig['parentPageId'] ?? 0);
-            $depth = (int)($extensionConfig['recursive'] ?? 1);
-            $proximityThreshold = (float)($extensionConfig['proximityThreshold'] ?? 0.5);
-            $maxSuggestions = (int)($extensionConfig['maxSuggestions'] ?? 5);
-            $excludePages = GeneralUtility::intExplode(',', $extensionConfig['excludePages'] ?? '', true);
-            $recencyWeight = (float)($extensionConfig['recencyWeight'] ?? 0.2);
-            $showStatistics = (bool)($extensionConfig['showStatistics'] ?? true);
-            $showPerformanceMetrics = (bool)($extensionConfig['showPerformanceMetrics'] ?? true);
-            $showLanguageStatistics = (bool)($extensionConfig['showLanguageStatistics'] ?? true);
-            $calculateDistribution = (bool)($extensionConfig['calculateDistribution'] ?? true);
-            $calculateTopSimilarPairs = (bool)($extensionConfig['calculateTopSimilarPairs'] ?? true);
-    
-            $startTime = microtime(true);
-            
-            $allFromCache = true;
-    
-            // Récupérer toutes les langues disponibles pour le site
-            $siteLanguages = $this->getSiteLanguages($parentPageId);
-    
-            $allPages = $this->getPages($parentPageId, $depth);
-            $totalPagesAnalyzed = count($allPages);
-    
-            // Appliquer les exclusions
-            $validatedPages = array_filter($allPages, function($page) use ($excludePages) {
-                return !in_array($page['uid'], $excludePages);
-            });
-            $totalValidatedPages = count($validatedPages);
-    
-            $languageStatistics = $this->calculateLanguageStatistics($validatedPages, $siteLanguages);
-            
-            $this->logDebug('Pages summary', [
-                'totalCount' => $totalPagesAnalyzed,
-                'validatedCount' => $totalValidatedPages,
-                'pagesByLanguage' => $languageStatistics
-            ]);
-
-            $data = [];
-            foreach ($siteLanguages as $language) {
-                $languageUid = $language->getLanguageId();
-                $cacheIdentifier = $this->generateValidCacheIdentifier($parentPageId, $depth, $proximityThreshold, $maxSuggestions, $languageUid);
-     
-                if ($this->getCache()->has($cacheIdentifier)) {
-                    $languageData = $this->getCache()->get($cacheIdentifier);
-                } else {
-                    $allFromCache = false;
-                    $languagePages = array_filter($validatedPages, function($page) use ($languageUid) {
-                        return $page['sys_language_uid'] == $languageUid || isset($page['translations'][$languageUid]);
-                    });
-
-                    $analysisData = $this->pageAnalysisService->analyzePages($languagePages, $languageUid);
-                    $languageData = $this->processAnalysisData($analysisData, $proximityThreshold, $excludePages, $maxSuggestions);
-                    $this->getCache()->set($cacheIdentifier, $languageData, ['semantic_suggestion'], 3600);
-                }
-                
-                $data[$languageUid] = $languageData;
-            }
-            
-            $mergedData = $this->mergeLanguageData($data);
-            $executionTime = microtime(true) - $startTime;
-
-
-            $this->logDebug('Analysis summary', [
-                'totalPagesAnalyzed' => $totalPagesAnalyzed,
-                'totalValidatedPages' => $totalValidatedPages,
-                'executionTime' => $executionTime,
-                'fromCache' => $allFromCache
-            ]);
-    
-    
-            $performanceMetrics = [
-                'executionTime' => $executionTime,
-                'totalPagesAnalyzed' => $totalPagesAnalyzed,
-                'totalValidatedPages' => $totalValidatedPages,
-                'similarityCalculations' => $totalValidatedPages * ($totalValidatedPages - 1) / 2,
-                'fromCache' => $allFromCache,
-            ];
-    
-            if (isset($mergedData['statistics']['topSimilarPairs'])) {
-                $uniquePairs = [];
-                foreach ($mergedData['statistics']['topSimilarPairs'] as $pair) {
-                    $key = min($pair['page1'], $pair['page2']) . '-' . max($pair['page1'], $pair['page2']);
-                    if (!isset($uniquePairs[$key])) {
-                        $uniquePairs[$key] = $pair;
-                    }
-                }
-                $mergedData['statistics']['topSimilarPairs'] = array_values($uniquePairs);
-                $this->logDebug('Top Similar Pairs after deduplication', ['pairs' => $mergedData['statistics']['topSimilarPairs']]);
-            }
-
-            $moduleTemplate->assignMultiple([
-                'parentPageId' => $parentPageId,
-                'depth' => $depth,
-                'proximityThreshold' => $proximityThreshold,
-                'maxSuggestions' => $maxSuggestions,
-                'excludePages' => implode(', ', $excludePages),
-                'recencyWeight' => $recencyWeight,
-                'performanceMetrics' => $showPerformanceMetrics ? $performanceMetrics : null,
-                'showStatistics' => $showStatistics,
-                'showPerformanceMetrics' => $showPerformanceMetrics,
-                'showLanguageStatistics' => $showLanguageStatistics,
-                'showTopSimilarPairs' => (bool)($extensionConfig['showTopSimilarPairs'] ?? true),
-                'showDistributionScores' => (bool)($extensionConfig['showDistributionScores'] ?? true),
-                'showTopSimilarPages' => (bool)($extensionConfig['showTopSimilarPages'] ?? true),
-                'statistics' => $showStatistics ? ($mergedData['statistics'] ?? null) : null,
-                'analysisResults' => $mergedData['analysisResults'] ?? [],
-                'totalPagesAnalyzed' => $totalPagesAnalyzed,
-                'totalValidatedPages' => $totalValidatedPages,
-                'languageStatistics' => $languageStatistics['statistics'],
-            ]);
-    
-        } catch (\Exception $e) {
-            $this->logger->error('Error in indexAction', ['exception' => $e->getMessage()]);
-            $this->addFlashMessage(
-                'An error occurred while processing the data. Please check the logs for more information.',
-                'Error',
-                \TYPO3\CMS\Core\Messaging\AbstractMessage::ERROR
-            );
-        }
-    
-        try {
-            $content = $this->view->render();
-            $moduleTemplate->setContent($content);
-        } catch (\Exception $e) {
-            $this->logger->error('Error rendering view', ['exception' => $e->getMessage()]);
-            $this->addFlashMessage(
-                'An error occurred while rendering the view. Please check the logs for more information.',
-                'Render Error',
-                \TYPO3\CMS\Core\Messaging\AbstractMessage::ERROR
-            );
-            $moduleTemplate->setContent('An error occurred while rendering the view.');
-        }
-    
-        $this->logDebug('Fin de indexAction');
-        return $moduleTemplate->renderResponse();
-    }
-
-
-    protected function mergeLanguageData(array $data): array
-    {
-        $mergedData = [
-            'statistics' => [],
-            'analysisResults' => [],
-            'languageStatistics' => [],
-            'totalPages' => 0,
-        ];
-    
-        $allPageUids = [];
-        foreach ($data as $languageUid => $languageData) {
-            $allPageUids = array_merge($allPageUids, array_keys($languageData['analysisResults']));
-            $mergedData['analysisResults'] += $languageData['analysisResults'];
-            $mergedData['languageStatistics'] += $languageData['languageStatistics'];
-            $mergedData['totalPages'] += $languageData['totalPages'];
-        }
-    
-        // Fusionner les statistiques
-        $mergedData['statistics'] = $this->mergeStatistics(array_column($data, 'statistics'));
-    
-        return $mergedData;
-    }
-    
-    protected function mergeStatistics(array $statisticsArray): array
-    {
-        $mergedStats = [
-            'totalPages' => 0,
-            'averageSimilarity' => 0,
-            'topSimilarPairs' => [],
-            'distributionScores' => [],
-            'topSimilarPages' => [],
-        ];
-    
-        $totalSimilarityScore = 0;
-        $totalPairs = 0;
-    
-        foreach ($statisticsArray as $stats) {
-            $mergedStats['totalPages'] += $stats['totalPages'];
-            $totalSimilarityScore += $stats['averageSimilarity'] * $stats['totalPages'] * ($stats['totalPages'] - 1) / 2;
-            $totalPairs += $stats['totalPages'] * ($stats['totalPages'] - 1) / 2;
-    
-            $mergedStats['topSimilarPairs'] = array_merge($mergedStats['topSimilarPairs'], $stats['topSimilarPairs'] ?? []);
-            $mergedStats['topSimilarPages'] += $stats['topSimilarPages'] ?? [];
-    
-            foreach ($stats['distributionScores'] ?? [] as $range => $count) {
-                $mergedStats['distributionScores'][$range] = ($mergedStats['distributionScores'][$range] ?? 0) + $count;
-            }
-        }
-    
-        $mergedStats['averageSimilarity'] = $totalPairs > 0 ? $totalSimilarityScore / $totalPairs : 0;
-    
-        usort($mergedStats['topSimilarPairs'], function($a, $b) {
-            return $b['score'] <=> $a['score'];
-        });
-        $mergedStats['topSimilarPairs'] = array_slice($mergedStats['topSimilarPairs'], 0, 5);
-    
-        arsort($mergedStats['topSimilarPages']);
-        $mergedStats['topSimilarPages'] = array_slice($mergedStats['topSimilarPages'], 0, 5, true);
-    
-        return $mergedStats;
-    }
-
-
-
-    protected function getPages(int $parentPageId, int $depth): array
-    {
-        $pageRepository = $this->getPageRepository();
-        $siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
-        $site = $siteFinder->getSiteByPageId($parentPageId);
-        $allPages = [];
-    
-        $defaultLanguagePages = $pageRepository->getMenu($parentPageId, '*', 'sorting', 'AND hidden=0 AND deleted=0', false);
-        
-        foreach ($defaultLanguagePages as $page) {
-            $allPages[$page['uid']] = $page;
-            $allPages[$page['uid']]['sys_language_uid'] = 0;
-            
-            foreach ($site->getLanguages() as $siteLanguage) {
-                $languageId = $siteLanguage->getLanguageId();
-                if ($languageId > 0) {
-                    $localizedPage = $pageRepository->getPageOverlay($page, $languageId);
-                    if ($localizedPage && isset($localizedPage['_PAGES_OVERLAY_UID'])) {
-                        $localizedPage['sys_language_uid'] = $languageId;
-                        $allPages[$localizedPage['_PAGES_OVERLAY_UID']] = $localizedPage;
-                    }
-                }
-            }
-    
-            if ($depth > 1) {
-                $subPages = $this->getPages($page['uid'], $depth - 1);
-                $allPages = array_merge($allPages, $subPages);
-            }
-        }
-    
-        return $allPages;
-    }
-
-    protected function getSiteLanguages(int $pageId): array
-    {
-        $siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
-        try {
-            $site = $siteFinder->getSiteByPageId($pageId);
-            return $site->getLanguages();
-        } catch (\TYPO3\CMS\Core\Exception\SiteNotFoundException $e) {
-            $this->logger->warning('No site found for page ID ' . $pageId . '. Using default language.');
-            return [new \TYPO3\CMS\Core\Site\Entity\SiteLanguage(0, 'en', new \TYPO3\CMS\Core\Site\Entity\NullSite(), ['title' => 'Default', 'twoLetterIsoCode' => 'en', 'flagIdentifier' => 'en'])];
-        }
-    }
-
-
-    
-    protected function getPageTranslations(int $pageUid): array
-    {
-        $translations = [];
-        $siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
-        $site = $siteFinder->getSiteByPageId($pageUid);
-    
-        foreach ($site->getAllLanguages() as $language) {
-            $languageId = $language->getLanguageId();
-            if ($languageId > 0) {  // Only for non-default languages
-                $translatedPage = $this->pageRepository->getPageOverlay($pageUid, $languageId);
-                if ($translatedPage && isset($translatedPage['uid'])) {
-                    $translatedPage['sys_language_uid'] = $languageId;
-                    $translations[$languageId] = $translatedPage;
-                }
-            }
-        }
-    
-        return $translations;
-    }
-
-
-
-   private function calculateStatistics(array $analysisResults, float $proximityThreshold, bool $calculateDistribution, bool $calculateTopSimilarPairs): array
-    {
-        $totalPages = count($analysisResults);
-        $totalSimilarityScore = 0;
-        $similarityPairs = [];
-        $distributionScores = $calculateDistribution ? [
-            '0.0-0.2' => 0, '0.2-0.4' => 0, '0.4-0.6' => 0, '0.6-0.8' => 0, '0.8-1.0' => 0
-        ] : [];
-        $pagesSimilarityCount = [];
-        $processedPairs = [];
-
-        foreach ($analysisResults as $pageId => $pageData) {
-            $pageLanguage = $pageData['sys_language_uid'] ?? 0;
-            foreach ($pageData['similarities'] as $similarPageId => $similarity) {
-                $pairKey = min($pageId, $similarPageId) . '-' . max($pageId, $similarPageId);
-                if (!isset($processedPairs[$pairKey])) {
-                    $processedPairs[$pairKey] = true;
-                    $similarPageLanguage = $analysisResults[$similarPageId]['sys_language_uid'] ?? 0;
-                    if ($pageLanguage === $similarPageLanguage) {
-                        $totalSimilarityScore += $similarity['score'];
-                        if ($calculateTopSimilarPairs) {
-                            $similarityPairs[] = [
-                                'page1' => min($pageId, $similarPageId),
-                                'page2' => max($pageId, $similarPageId),
-                                'score' => $similarity['score'],
-                                'language' => $pageLanguage
-                            ];
-                        }
-                        if ($similarity['score'] >= $proximityThreshold) {
-                            $pagesSimilarityCount[$pageId] = ($pagesSimilarityCount[$pageId] ?? 0) + 1;
-                            $pagesSimilarityCount[$similarPageId] = ($pagesSimilarityCount[$similarPageId] ?? 0) + 1;
-                        }
-                        if ($calculateDistribution) {
-                            if ($similarity['score'] < 0.2) $distributionScores['0.0-0.2']++;
-                            elseif ($similarity['score'] < 0.4) $distributionScores['0.2-0.4']++;
-                            elseif ($similarity['score'] < 0.6) $distributionScores['0.4-0.6']++;
-                            elseif ($similarity['score'] < 0.8) $distributionScores['0.6-0.8']++;
-                            else $distributionScores['0.8-1.0']++;
-                        }
-                    }
-                }
-            }
+        /**
+         * @param PageRepository $pageRepository
+         */
+        public function injectPageRepository(PageRepository $pageRepository): void
+        {
+            $this->pageRepository = $pageRepository;
         }
 
-        $result = [
-            'totalPages' => $totalPages,
-            'averageSimilarity' => $totalPages > 1 ? $totalSimilarityScore / count($processedPairs) : 0,
-        ];
 
-        if ($calculateTopSimilarPairs) {
-            usort($similarityPairs, function($a, $b) {
-                return $b['score'] <=> $a['score'];
-            });
-            $result['topSimilarPairs'] = array_slice($similarityPairs, 0, 5);
-        }
-
-        if ($calculateDistribution) {
-            $result['distributionScores'] = $distributionScores;
-        }
-
-        arsort($pagesSimilarityCount);
-        $result['topSimilarPages'] = array_slice($pagesSimilarityCount, 0, 5, true);
-
-        return $result;
-    }
-   
-
-    private function getAllLanguages(): array
-    {
-        $languages = [];
-        $siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
-        $sites = $siteFinder->getAllSites();
-
-        foreach ($sites as $site) {
-            foreach ($site->getAllLanguages() as $language) {
-                $languageId = $language->getLanguageId();
-                $languages[$languageId] = [
-                    'title' => $language->getTitle(),
-                    'twoLetterIsoCode' => $language->getTwoLetterIsoCode(),
-                    'flagIdentifier' => $language->getFlagIdentifier(),
-                ];
-            }
-        }
-
-        // Assurez-vous que la langue par défaut (ID 0) est incluse
-        if (!isset($languages[0])) {
-            $defaultLanguage = $sites[array_key_first($sites)]->getDefaultLanguage();
-            $languages[0] = [
-                'title' => $defaultLanguage->getTitle(),
-                'twoLetterIsoCode' => $defaultLanguage->getTwoLetterIsoCode(),
-                'flagIdentifier' => $defaultLanguage->getFlagIdentifier(),
-            ];
-        }
-
-        ksort($languages);
-        return $languages;
+    // --- Action Index (Logique métier principale) ---
+// --- Action Index (Logique métier principale) ---
+public function indexAction(int $rootPageId = null): ResponseInterface
+{
+    // Log facultatif au début
+    if ($this->logger instanceof LoggerInterface &&
+        ($this->pageAnalysisService->getSettings()['debugMode'] ?? false)) {
+        $this->logger->debug('Début de indexAction', ['rootPageId' => $rootPageId]);
     }
 
+    // Créer le ModuleTemplate
+    $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
 
-    protected function generateValidCacheIdentifier(int $parentPageId, int $depth, float $proximityThreshold, int $maxSuggestions, int $currentLanguageUid): string
-    {
-        $identifier = 'semantic_analysis_' . $parentPageId . '_' . $depth . '_' . $proximityThreshold . '_' . $maxSuggestions . '_' . $currentLanguageUid;
-        return md5($identifier);
-    }
-
-
-    protected function processAnalysisData(array $analysisData, float $proximityThreshold, array $excludePages, int $maxSuggestions): array
-    {
-        $analysisResults = $analysisData['results'] ?? [];
-
-        if (!empty($excludePages)) {
-            $analysisResults = array_diff_key($analysisResults, array_flip($excludePages));
-        }
-
+    try {
+        // Récupérer la configuration TypoScript
         $fullTypoScript = $this->configurationManager->getConfiguration(
             ConfigurationManagerInterface::CONFIGURATION_TYPE_FULL_TYPOSCRIPT
         );
         $extensionConfig = $fullTypoScript['plugin.']['tx_semanticsuggestion_suggestions.']['settings.'] ?? [];
-        $calculateDistribution = (bool)($extensionConfig['calculateDistribution'] ?? true);
-        $calculateTopSimilarPairs = (bool)($extensionConfig['calculateTopSimilarPairs'] ?? true);
+        $this->pageAnalysisService->setSettings($extensionConfig); // Mettre à jour les settings du service
 
-        $statistics = $this->calculateStatistics($analysisResults, $proximityThreshold, $calculateDistribution, $calculateTopSimilarPairs);
-        
-        // Ici, nous devons passer les langues du site
-        $siteLanguages = $this->getSiteLanguages($this->getCurrentPageId());
-        $languageStatistics = $this->calculateLanguageStatistics($analysisResults, $siteLanguages);
+        // Si aucun rootPageId n'est fourni, tenter de le déterminer
+        if ($rootPageId === null) {
+            $defaultRootPageId = (int)($extensionConfig['parentPageId'] ?? 0);
 
-        return [
-            'statistics' => $statistics,
-            'analysisResults' => $analysisResults,
-            'languageStatistics' => $languageStatistics,
-            'totalPages' => count($analysisResults),
-        ];
-    }
+            // Si pas dans TS, chercher le premier root_page_id distinct dans la DB
+            if ($defaultRootPageId === 0) {
+                $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
+                $rootPageIds = $queryBuilder
+                    ->select('root_page_id')
+                    ->from('tx_semanticsuggestion_similarities')
+                    ->groupBy('root_page_id')
+                    ->executeQuery()
+                    ->fetchFirstColumn();
 
-
-    protected function getCurrentPageId(): int
-    {
-        $pageId = (int)($GLOBALS['TSFE']->id ?? $this->request->getQueryParams()['id'] ?? 0);
-        
-        if ($pageId === 0) {
-            // Si nous n'avons pas d'ID de page, essayons de prendre le premier site disponible
-            $siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
-            $sites = $siteFinder->getAllSites();
-            if (!empty($sites)) {
-                $firstSite = reset($sites);
-                $pageId = $firstSite->getRootPageId();
+                if (!empty($rootPageIds)) {
+                    $defaultRootPageId = (int)$rootPageIds[0];
+                }
             }
+            $rootPageId = $defaultRootPageId;
         }
-        
-        if ($pageId === 0) {
-            throw new \RuntimeException('No valid page ID found', 1631234567);
+
+        // Vérifier si un rootPageId valide a été trouvé ou fourni
+        if ($rootPageId <= 0) {
+            $this->addFlashMessage(
+                'Aucune analyse de similarité trouvée ou configurée. Veuillez configurer l\'extension et exécuter la tâche scheduler correspondante.',
+                'Aucune donnée disponible',
+                ContextualFeedbackSeverity::INFO // Utiliser l'Enum ici
+            );
+             // ATTENTION: ModuleTemplate n'a pas de setContent. Retourner directement si erreur.
+            // Il faudrait idéalement assigner une variable d'erreur à la vue.
+            // Pour l'instant, on peut juste rendre sans données principales.
+            $moduleTemplate->assign('errorMessage', 'Aucune analyse de similarité trouvée ou configurée.');
+            return $moduleTemplate->renderResponse(); // Retourner tôt
         }
-        
-        return $pageId;
+
+        // Récupérer les analyses disponibles pour le sélecteur
+        $queryBuilderAnalyses = GeneralUtility::makeInstance(ConnectionPool::class)
+            ->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
+
+        $availableAnalyses = $queryBuilderAnalyses
+            ->select('root_page_id')
+            ->addSelectLiteral('COUNT(DISTINCT page_id) as page_count')
+            ->addSelectLiteral('COUNT(*) as pair_count')
+            ->from('tx_semanticsuggestion_similarities')
+            ->groupBy('root_page_id')
+            ->executeQuery()
+            ->fetchAllAssociative();
+
+        // Enrichir avec le titre de la page racine
+        foreach ($availableAnalyses as &$analysis) {
+            $pageRecord = $this->pageRepository->getPage((int)$analysis['root_page_id']);
+            $analysis['title'] = $pageRecord['title'] ?? 'ID: ' . $analysis['root_page_id'];
+        }
+        unset($analysis); // Important après une boucle foreach avec référence
+
+        // Récupérer les données pour l'analyse sélectionnée depuis la DB
+        // Note: getAnalysisFromDatabase utilise getAnalysisFromDatabaseDetailed
+        // qui calcule déjà les 'statistics'.
+        $analysisData = $this->getAnalysisFromDatabase($rootPageId);
+
+        // Assigner toutes les données nécessaires à la vue Fluid
+        $moduleTemplate->assignMultiple([
+            'currentRootPageId' => $rootPageId,
+            'availableAnalyses' => $availableAnalyses,
+            'parentPageId' => $rootPageId, // ou $extensionConfig['parentPageId'] selon la logique voulue
+            'proximityThreshold' => (float)($extensionConfig['proximityThreshold'] ?? 0.5),
+            'maxSuggestions' => (int)($extensionConfig['maxSuggestions'] ?? 5),
+            'excludePages' => $extensionConfig['excludePages'] ?? '',
+            'analysisResults' => $analysisData['results'] ?? [],
+            'statistics' => $analysisData['statistics'] ?? [], // <-- Utilise les statistiques pré-calculées
+            'showStatistics' => true, // Ou basé sur $extensionConfig['showStatistics']
+            'showPerformanceMetrics' => true, // etc.
+            'showLanguageStatistics' => true,
+            'showTopSimilarPairs' => true,
+            'showDistributionScores' => true,
+            'showTopSimilarPages' => true,
+            // Ajouter d'autres variables si nécessaire (ex: performanceMetrics, languageStatistics calculés ici)
+        ]);
+
+    } catch (\Exception $e) {
+        // Gérer les erreurs potentielles lors de la récupération/traitement des données
+        $this->logger->error('Error in indexAction', ['exception' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        $this->addFlashMessage(
+            'Une erreur est survenue lors du traitement des données: ' . $e->getMessage(),
+            'Erreur',
+            ContextualFeedbackSeverity::ERROR // Utiliser l'Enum ici
+        );
+         // Assigner un message d'erreur à la vue en cas d'exception
+         $moduleTemplate->assign('errorMessage', 'Une erreur est survenue lors du traitement des données: ' . $e->getMessage());
     }
 
-    private function calculateLanguageStatistics(array $pages, array $siteLanguages): array
+    // --- SUPPRIMER LE BLOC SUIVANT ---
+    /*
+    try {
+        $content = $this->view->render(); // Inutile de rendre manuellement ici
+        $moduleTemplate->setContent($content); // Erreur: Méthode inexistante
+    } catch (\Exception $e) {
+        $this->logger->error('Error rendering view', ['exception' => $e->getMessage()]);
+        $this->addFlashMessage(
+            'Une erreur est survenue lors du rendu de la vue: ' . $e->getMessage(),
+            'Erreur de rendu',
+            ContextualFeedbackSeverity::ERROR
+        );
+         // Si le rendu échoue dans renderResponse, TYPO3 le gère souvent.
+         // On peut assigner un message d'erreur si besoin.
+         // $moduleTemplate->assign('renderError', 'Erreur de rendu: ' . $e->getMessage());
+         // $moduleTemplate->setContent('Une erreur est survenue lors du rendu de la vue.'); // Inexistant
+    }
+    */
+    // --- FIN DE LA SUPPRESSION ---
+
+    // Rendre la réponse complète (layout + contenu de la vue Fluid)
+    // Si une exception a eu lieu avant, $errorMessage sera affiché par la vue.
+    return $moduleTemplate->renderResponse('SemanticBackend/Index');
+}
+
+
+    private function getAnalysisFromDatabase(int $rootPageId): array
+        {
+            // Valeurs par défaut
+            $proximityThreshold = 0.5;
+            $excludePages = [];
+            $currentLanguageUid = 0; // Utilisez une valeur par défaut ou un service pour obtenir la langue courante
+            
+            return $this->getAnalysisFromDatabaseDetailed($rootPageId, 1, $proximityThreshold, $excludePages, $currentLanguageUid);
+        }
+
+
+    // --- Méthodes Utilitaires (Identiques à Legacy) ---
+
+    protected function getAnalysisFromDatabaseDetailed(int $parentPageId, int $depth, float $proximityThreshold, array $excludePages, int $currentLanguageUid): array
     {
-        $languageStats = [];
-        $totalPages = 0;
-    
-        foreach ($siteLanguages as $language) {
-            $languageId = $language->getLanguageId();
-            $languageStats[$languageId] = [
-                'count' => 0,
-                'info' => [
-                    'title' => $language->getTitle(),
-                    'twoLetterIsoCode' => $language->getTwoLetterIsoCode(),
-                    'flagIdentifier' => $language->getFlagIdentifier(),
-                ],
-            ];
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class) ->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
+        $similarities = $queryBuilder
+            ->select('page_id', 'similar_page_id', 'similarity_score', 'root_page_id', 'sys_language_uid')
+            ->from('tx_semanticsuggestion_similarities') ->where(
+                $queryBuilder->expr()->eq('root_page_id', $queryBuilder->createNamedParameter($parentPageId, ParameterType::INTEGER)),
+                $queryBuilder->expr()->eq('sys_language_uid', $queryBuilder->createNamedParameter($currentLanguageUid, ParameterType::INTEGER)),
+                $queryBuilder->expr()->gte('similarity_score', $queryBuilder->createNamedParameter($proximityThreshold, ParameterType::STRING))
+            )->executeQuery()->fetchAllAssociative();
+        $analysisResults = []; $pageIds = [];
+        foreach ($similarities as $similarity) {
+            $pageId = (int)$similarity['page_id']; $similarPageId = (int)$similarity['similar_page_id'];
+            $pageIds[] = $pageId; $pageIds[] = $similarPageId;
+            if (!isset($analysisResults[$pageId])) { $analysisResults[$pageId] = ['uid' => $pageId, 'similarities' => [], 'sys_language_uid' => (int)$similarity['sys_language_uid']]; }
+            if (!in_array($similarPageId, $excludePages)) { $analysisResults[$pageId]['similarities'][$similarPageId] = ['score' => (float)$similarity['similarity_score'], 'relevance' => $this->determineRelevanceLevel((float)$similarity['similarity_score'])]; }
         }
-    
-        foreach ($pages as $page) {
-            $languageId = $page['sys_language_uid'] ?? 0;
-            if (isset($languageStats[$languageId])) {
-                $languageStats[$languageId]['count']++;
-                $totalPages++;
-            }
+        $pageIds = array_unique($pageIds); $pageDataRecords = [];
+        if (!empty($pageIds)) {
+            $pageDataRecords = $this->getPageRepository()->getMenuForPages($pageIds, 'uid, title', 'sorting', 'AND hidden=0 AND deleted=0');
+            foreach ($analysisResults as $pageId => &$data) { $data['title'] = ['content' => $pageDataRecords[$pageId]['title'] ?? '[Page #' . $pageId . ']']; } unset($data);
+            foreach ($pageIds as $pageId) { if (!isset($analysisResults[$pageId]) && isset($pageDataRecords[$pageId])) { $analysisResults[$pageId] = ['uid' => $pageId, 'title' => ['content' => $pageDataRecords[$pageId]['title'] ?? ''], 'similarities' => [], 'sys_language_uid' => $currentLanguageUid]; } }
         }
-    
-        foreach ($languageStats as &$stat) {
-            $stat['percentage'] = ($totalPages > 0) ? ($stat['count'] / $totalPages) * 100 : 0;
-        }
-    
-        return [
-            'statistics' => $languageStats,
-            'totalPages' => $totalPages
-        ];
+        $statistics = $this->calculateStatisticsFromDbResults($analysisResults);
+        return ['results' => $analysisResults, 'statistics' => $statistics, 'metrics' => ['totalPages' => count($pageIds)]];
     }
 
+    protected function mergeLanguageData(array $data): array { $firstKey = array_key_first($data); return $firstKey !== null ? $data[$firstKey] : ['results' => [], 'statistics' => [], 'metrics' => ['totalPages' => 0]]; }
+    protected function calculateStatisticsFromDbResults(array $analysisResults): array { $stats = ['topSimilarPairs' => [], 'distributionScores' => [], 'topSimilarPages' => []]; $allPairs = []; $pageSimilarityCounts = []; $scoreRanges = ['0.0-0.2'=>0, '0.2-0.4'=>0, '0.4-0.6'=>0, '0.6-0.8'=>0, '0.8-1.0'=>0]; foreach ($analysisResults as $pageId => $data) { $pageSimilarityCounts[$pageId] = 0; foreach ($data['similarities'] as $similarPageId => $similarity) { $score = $similarity['score']; $allPairs[] = ['page1'=>$pageId, 'page2'=>$similarPageId, 'score'=>$score]; $pageSimilarityCounts[$pageId]++; if($score <= 0.2) $scoreRanges['0.0-0.2']++; elseif($score <= 0.4) $scoreRanges['0.2-0.4']++; elseif($score <= 0.6) $scoreRanges['0.4-0.6']++; elseif($score <= 0.8) $scoreRanges['0.6-0.8']++; else $scoreRanges['0.8-1.0']++; } } usort($allPairs, fn($a, $b)=>$b['score']<=>$a['score']); $uniquePairs = []; $displayedPairKeys = []; foreach($allPairs as $pair){ $key = min($pair['page1'], $pair['page2']).'-'.max($pair['page1'], $pair['page2']); if(!isset($displayedPairKeys[$key])){ $uniquePairs[] = $pair; $displayedPairKeys[$key] = true; } } $stats['topSimilarPairs'] = array_slice($uniquePairs, 0, 5); $stats['distributionScores'] = $scoreRanges; arsort($pageSimilarityCounts); $stats['topSimilarPages'] = array_slice($pageSimilarityCounts, 0, 5, true); return $stats; }
+    protected function getPageRepository(): PageRepository { if ($this->pageRepository === null) { $this->pageRepository = GeneralUtility::makeInstance(PageRepository::class); } return $this->pageRepository; }
+    protected function determineRelevanceLevel(float $similarityScore): string { if ($similarityScore > 0.7) return 'High'; elseif ($similarityScore > 0.4) return 'Medium'; else return 'Low'; }
+    public function addFlashMessage(
+        string $messageBody, string $messageTitle = '',
+        ContextualFeedbackSeverity $severity = ContextualFeedbackSeverity::INFO,
+        bool $storeInSession = false
+   ): void {
+        $flashMessage = GeneralUtility::makeInstance(FlashMessage::class, $messageBody, $messageTitle, $severity, $storeInSession);
+        $this->flashMessageService->getMessageQueueByIdentifier('core.template.flashMessages')->enqueue($flashMessage);
+   }
 
-    protected function getCurrentLanguageUid(): int
-{
-    return GeneralUtility::makeInstance(Context::class)->getAspect('language')->getId();
-}
-}
+   
+} 

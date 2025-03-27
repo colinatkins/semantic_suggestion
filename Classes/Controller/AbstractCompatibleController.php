@@ -11,12 +11,14 @@ use TYPO3\CMS\Extbase\Mvc\Controller\Arguments; // Assurez-vous que cette ligne 
  */
 abstract class AbstractCompatibleController extends ActionController
 {
-    /**
+    // Compat V12 V13, suppprimer TOUTE LA DECLARATION DE $settings CI-DESSOUS :
+    /*
      * Settings
      *
      * @var array // Annotation phpDoc pour la clarté
      */
-    protected $settings = []; // Pas de type hint natif pour compatibilité v12
+    // protected $settings = []; // Pas de type hint natif pour compatibilité v12
+
 
     /**
      * Arguments de l'action.
@@ -37,20 +39,8 @@ abstract class AbstractCompatibleController extends ActionController
         // Appel au parent
         parent::initializeAction();
 
-        // Assigner les settings à la vue pour le frontend (principalement)
-        // et potentiellement d'autres initialisations si nécessaire ici.
+        // Assigner les settings (hérités du parent) à la vue
         if (isset($this->view) && $this->view !== null) {
-             // Le code pour setTemplateRootPaths est commenté car normalement géré
-             // par Configuration/Backend/Modules.php pour le backend
-             /*
-            if (method_exists($this->view, 'setTemplateRootPaths')) {
-                $this->view->setTemplateRootPaths([
-                    0 => 'EXT:semantic_suggestion/Resources/Private/Templates/'
-                ]);
-            }
-            */
-
-            // Assigner les settings à la vue
             $this->view->assign('settings', $this->settings);
         }
     }
@@ -69,13 +59,10 @@ abstract class AbstractCompatibleController extends ActionController
 
     /**
      * Initialise la propriété $arguments si elle n'est pas déjà un objet Arguments.
-     * Cette méthode est plus simple et plus directe que la précédente avec réflexion.
      */
     private function ensureArgumentsAreInitialized(): void
     {
         if (!$this->arguments instanceof Arguments) {
-             // Si $arguments n'est pas déjà un objet Arguments (inclut le cas où il est null),
-             // on l'initialise.
             $this->arguments = new Arguments();
         }
     }

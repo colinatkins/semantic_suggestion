@@ -3,39 +3,32 @@
 namespace TalanHdf\SemanticSuggestion\Controller;
 
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
-use TYPO3\CMS\Extbase\Mvc\Controller\Arguments; // Assurez-vous que cette ligne 'use' est présente
+use TYPO3\CMS\Extbase\Mvc\Controller\Arguments;
+use ReflectionProperty; // Ajouter la classe ReflectionProperty
 
 /**
  * Classe abstraite compatible entre TYPO3 v12 et v13
- * Résout les problèmes d'accès aux propriétés typées avant initialisation
  */
 abstract class AbstractCompatibleController extends ActionController
 {
-    // PAS de déclaration pour $settings ici (hérité)
-
-    // SUPPRIMEZ LA DECLARATION DE $arguments CI-DESSOUS :
-    /*
-     * Arguments de l'action.
-     * Déclarée ici pour s'assurer qu'elle existe, sans type hint natif.
-     * L'initialisation est gérée dans les méthodes initialize*.
-     * @var Arguments|null
-     */
-    // protected $arguments;
-
+    // Pas de déclaration pour $settings (hérité)
+    // Pas de déclaration pour $arguments (hérité)
 
     /**
      * @inheritDoc
      */
     protected function initializeAction(): void
     {
-        // S'assurer que $arguments est initialisé avant l'appel parent si nécessaire
-        $this->ensureArgumentsAreInitialized();
+        // Utiliser la réflexion pour vérifier $arguments de manière sûre ici,
+        // car initializeAction est appelé plus tard dans le cycle.
+        $this->ensureArgumentsAreInitializedSafelyUsingReflection();
 
         // Appel au parent
         parent::initializeAction();
 
         // Assigner les settings (hérités du parent) à la vue
-        if (isset($this->view) && $this->view !== null) {
+        // Ajouter une vérification de sécurité pour $this->settings
+        if (isset($this->view) && $this->view !== null && property_exists($this, 'settings') && isset($this->settings)) {
             $this->view->assign('settings', $this->settings);
         }
     }
@@ -45,23 +38,36 @@ abstract class AbstractCompatibleController extends ActionController
      */
     protected function initializeActionMethodValidators(): void
     {
-        // Point crucial : Assurer l'initialisation AVANT l'appel parent
-        $this->ensureArgumentsAreInitialized();
+        // IMPORTANT : Ne PAS appeler ensureArgumentsAreInitialized() ici.
+        // On laisse le processus standard d'Extbase initialiser $arguments.
+        // L'erreur précédente dans count() ne devrait plus se produire si notre
+        // code n'interfère pas ici.
 
-        // Appel au parent qui contient la ligne $this->arguments->count()
+        // Appel direct au parent.
         parent::initializeActionMethodValidators();
     }
 
     /**
-     * Initialise la propriété $arguments si elle n'est pas déjà un objet Arguments.
+     * Initialise la propriété $arguments de façon sûre en utilisant la réflexion
+     * si elle n'est pas déjà initialisée par Extbase.
+     * Principalement utile comme filet de sécurité dans initializeAction.
      */
-    private function ensureArgumentsAreInitialized(): void
+    private function ensureArgumentsAreInitializedSafelyUsingReflection(): void
     {
-        // La propriété $arguments est maintenant héritée.
-        // On vérifie si elle a été initialisée par le processus parent ou non.
-        if (!$this->arguments instanceof Arguments) {
-             // Si $arguments n'est pas (encore) un objet Arguments, on l'initialise.
-            $this->arguments = new Arguments();
+        try {
+            // Vérifier via Réflexion si la propriété $arguments (héritée) est initialisée
+            $reflection = new ReflectionProperty(ActionController::class, 'arguments');
+            if (!$reflection->isInitialized($this)) {
+                // Si elle n'est PAS initialisée à ce stade (ce qui serait peut-être
+                // inattendu mais possible), on l'initialise nous-mêmes.
+                $this->arguments = new Arguments();
+            }
+        } catch (\ReflectionException $e) {
+            // En cas d'échec de la réflexion (très peu probable),
+            // on tente une initialisation classique par sécurité si $arguments n'est pas déjà un objet.
+            if (!isset($this->arguments) || !$this->arguments instanceof Arguments) {
+                 $this->arguments = new Arguments();
+            }
         }
     }
 }

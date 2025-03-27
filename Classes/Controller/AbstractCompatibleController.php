@@ -11,22 +11,17 @@ use TYPO3\CMS\Extbase\Mvc\Controller\Arguments; // Assurez-vous que cette ligne 
  */
 abstract class AbstractCompatibleController extends ActionController
 {
-    // Compat V12 V13, suppprimer TOUTE LA DECLARATION DE $settings CI-DESSOUS :
+    // PAS de déclaration pour $settings ici (hérité)
+
+    // SUPPRIMEZ LA DECLARATION DE $arguments CI-DESSOUS :
     /*
-     * Settings
-     *
-     * @var array // Annotation phpDoc pour la clarté
-     */
-    // protected $settings = []; // Pas de type hint natif pour compatibilité v12
-
-
-    /**
      * Arguments de l'action.
      * Déclarée ici pour s'assurer qu'elle existe, sans type hint natif.
      * L'initialisation est gérée dans les méthodes initialize*.
      * @var Arguments|null
      */
-    protected $arguments;
+    // protected $arguments;
+
 
     /**
      * @inheritDoc
@@ -62,7 +57,10 @@ abstract class AbstractCompatibleController extends ActionController
      */
     private function ensureArgumentsAreInitialized(): void
     {
+        // La propriété $arguments est maintenant héritée.
+        // On vérifie si elle a été initialisée par le processus parent ou non.
         if (!$this->arguments instanceof Arguments) {
+             // Si $arguments n'est pas (encore) un objet Arguments, on l'initialise.
             $this->arguments = new Arguments();
         }
     }

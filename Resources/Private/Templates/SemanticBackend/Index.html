@@ -35,7 +35,7 @@
                     <f:render section="Card" arguments="{icon: 'actions-insert', header: '{proximityThreshold -> f:format.number(decimals: 2)}', content: 'Display Threshold'}" />
                     <f:render section="Card" arguments="{icon: 'actions-plus-square', header: maxSuggestions, content: 'Max Suggestions (Frontend)'}" />
                     <f:render section="Card" arguments="{
-                        icon: 'apps-pagetree-page-multiple',
+                        icon: 'apps-pagetree-page-default', 
                         header: totalValidatedPages,
                         content: 'Unique Pages in Results (above threshold)'}"
                     />
@@ -85,8 +85,10 @@
                             <td>{langStat.count}</td>
                             <td>
                                 <f:if condition="{totalLangPages} > 0">
-                                     {langStat.count / totalLangPages * 100 -> f:format.number(decimals: 1)}%
+                                     { ( langStat.count / totalLangPages * 100 ) -> f:format.number(decimals: 1) }%
                                 </f:if>
+                                <f:else>
+                                    0% </f:else>
                             </td>
                         </tr>
                     </f:for>
@@ -221,14 +223,14 @@
 <f:section name="Card">
     <div class="col {colClass}">
         <div class="card h-100 {cardClass}">
-            <div class="card-header fs-5 fw-bold"> <f:if condition="{icon}">
+            <div class="card-header fs-2 fw-bold"> <f:if condition="{icon}">
                     <span class="card-icon">
-                        <core:icon identifier="{icon}" size="small" alternativeMarkupIdentifier="inline" />
+                        <core:icon identifier="{icon}" size="medium" alternativeMarkupIdentifier="inline" />
                     </span>
                 </f:if>
                 {header -> f:format.raw()}
             </div>
-            <div class="card-body small">{content -> f:format.raw()}</div>
+            <div class="card-body">{content -> f:format.raw()}</div>
         </div>
     </div>
 </f:section>

@@ -70,7 +70,7 @@ class LegacySemanticBackendController extends ActionController
         // }
     }
 
-    // --- Action Index (Logique métier principale) ---
+   // --- Action Index (Logique métier principale) ---
     public function indexAction(): ResponseInterface
     {
         $this->logDebug('Début de indexAction (Legacy Controller)');
@@ -78,13 +78,15 @@ class LegacySemanticBackendController extends ActionController
 
         try {
             // Récupérer la configuration via le service PageAnalysisService
-            // (qui lui-même utilise ConfigurationManager injecté)
             $extensionConfig = $this->pageAnalysisService->getSettings();
-            $parentPageId = (int)($extensionConfig['parentPageId'] ?? 1); // Default à 1 si non défini
-            $depth = (int)($extensionConfig['recursive'] ?? 1);
-            $proximityThreshold = (float)($extensionConfig['proximityThreshold'] ?? 0.5);
+            $parentPageId = (int)($extensionConfig['parentPageId'] ?? 1);
+            $depth = (int)($extensionConfig['recursive'] ?? 1); // Note: 'depth' est lié à la config Scheduler, peut être affiché à titre indicatif
+            $proximityThreshold = (float)($extensionConfig['proximityThreshold'] ?? 0.5); // Seuil pour l'affichage
             $excludePages = GeneralUtility::intExplode(',', $extensionConfig['excludePages'] ?? '', true);
-            // ... récupérer d'autres configs ...
+            $maxSuggestions = (int)($extensionConfig['maxSuggestions'] ?? 5); // Pour info frontend
+            $nlpEnabled = (bool)($extensionConfig['nlpEnabled'] ?? false); // Si vous avez une config NLP
+
+            // Visibilité des sections
             $showStatistics = (bool)($extensionConfig['showStatistics'] ?? true);
             $showPerformanceMetrics = (bool)($extensionConfig['showPerformanceMetrics'] ?? true);
             $showLanguageStatistics = (bool)($extensionConfig['showLanguageStatistics'] ?? true);
@@ -92,81 +94,127 @@ class LegacySemanticBackendController extends ActionController
             $showDistributionScores = (bool)($extensionConfig['showDistributionScores'] ?? true);
             $showTopSimilarPages = (bool)($extensionConfig['showTopSimilarPages'] ?? true);
 
-
             $this->logDebug('Using config (Legacy)', $extensionConfig);
             $startTime = microtime(true);
 
             // Récupérer les langues du site
             $siteLanguages = [];
             try {
-                 // Pour V12, PageAnalysisService a peut-être besoin de ConfigurationManager
-                 // Assurez-vous que LanguageService est compatible V12 ou utilisez une approche alternative si getSiteLanguages échoue
                 $siteLanguages = $this->languageService->getSiteLanguages($parentPageId);
             } catch (\TYPO3\CMS\Core\Exception\SiteNotFoundException $e) {
-               $this->logger->warning('No site configuration found for page ID ' . $parentPageId, ['exception' => $e->getMessage()]);
-                $this->addFlashMessage( /* ... message ... */ ); // Utiliser addFlashMessage défini ci-dessous
-                $siteLanguages = []; // Continuer sans langues de site spécifiques
+                $this->logger->warning('No site configuration found for page ID ' . $parentPageId, ['exception' => $e->getMessage()]);
+                $this->addFlashMessage('Site configuration not found for page ' . $parentPageId, 'Config Warning', ContextualFeedbackSeverity::WARNING);
+                $siteLanguages = [];
+            }
+
+            // S'il n'y a pas de langues de site, traiter au moins la langue par défaut (0)
+            if (empty($siteLanguages)) {
+                    // Création d'un objet langue par défaut minimaliste
+                    $siteLanguages = [ GeneralUtility::makeInstance(\TYPO3\CMS\Core\Site\Entity\SiteLanguage::class, 0, 'default', new \Symfony\Component\HttpFoundation\ParameterBag(), $parentPageId) ];
+                    $this->logger->warning('No site languages found, processing default language 0 only.');
             }
 
             // Lire les données depuis la base pour toutes les langues disponibles
             $allLanguageData = [];
-            $totalDbPages = 0;
-            // S'il n'y a pas de langues de site, traiter au moins la langue par défaut (0)
-            if (empty($siteLanguages)) {
-                 $siteLanguages = [ GeneralUtility::makeInstance(\TYPO3\CMS\Core\Site\Entity\SiteLanguage::class, 0, 'default', new \Symfony\Component\HttpFoundation\ParameterBag(), $parentPageId) ];
-                 $this->logger->warning('No site languages found, processing default language 0 only.');
-            }
+            // $totalDbPages = 0; // Cette variable n'est plus utilisée directement
+            $firstLanguageUidProcessed = null; // Garder trace de la première langue traitée
 
             foreach ($siteLanguages as $language) {
                 $languageUid = $language->getLanguageId();
+                if ($firstLanguageUidProcessed === null) {
+                    $firstLanguageUidProcessed = $languageUid; // Stocke l'ID de la première langue
+                }
                 // Lire les données depuis la DB pour cette langue
                 $dbData = $this->getAnalysisFromDatabase(
-                    $parentPageId,
-                    $depth, // Gardé pour contexte
+                    $parentPageId, // Utiliser comme root_page_id
+                    $depth, // Gardé pour contexte, mais non utilisé dans la requête DB
                     $proximityThreshold,
                     $excludePages,
                     $languageUid
                 );
                 $allLanguageData[$languageUid] = $dbData;
-                $totalDbPages += $dbData['metrics']['totalPages'] ?? 0;
+                // $totalDbPages += $dbData['metrics']['totalPages'] ?? 0; // Calcul fait différemment maintenant
             }
-            // Fusionner ou sélectionner les données à afficher (simplifié ici)
+
+            // Fusionner ou sélectionner les données à afficher
+            // NOTE: Votre mergeLanguageData actuel prend juste les données de la première langue.
+            // Si vous voulez des stats agrégées, cette méthode doit être revue.
+            // Pour l'instant, on se base sur la logique existante (première langue).
             $mergedData = $this->mergeLanguageData($allLanguageData);
 
             $executionTime = microtime(true) - $startTime;
 
-            // Préparer les métriques de performance
+            // --- Préparation des métriques et statistiques (Nouvelle Logique) ---
+
+            // Langue pour laquelle les statistiques affichées sont valides (basé sur mergeLanguageData)
+            $statsLanguageUid = $firstLanguageUidProcessed ?? 0; // Utilise la première langue traitée ou 0 par défaut
+
+            $totalStoredSimilarities = 0;
+            try {
+                $countQueryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
+                    ->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
+                $totalStoredSimilarities = (int)$countQueryBuilder
+                    ->count('uid')
+                    ->from('tx_semanticsuggestion_similarities')
+                    ->where(
+                            $countQueryBuilder->expr()->eq('root_page_id', $countQueryBuilder->createNamedParameter($parentPageId, ParameterType::INTEGER)),
+                            $countQueryBuilder->expr()->eq('sys_language_uid', $countQueryBuilder->createNamedParameter($statsLanguageUid, ParameterType::INTEGER)), // Utilise la langue déterminée
+                            $countQueryBuilder->expr()->gte('similarity_score', $countQueryBuilder->createNamedParameter($proximityThreshold, ParameterType::STRING)) // Compte au-dessus du seuil d'affichage
+                    )
+                    ->executeQuery()
+                    ->fetchOne();
+            } catch (\Exception $e) {
+                    $this->logger->error('Failed to count stored similarities (Legacy)', ['exception' => $e->getMessage()]);
+            }
+
             $performanceMetrics = [
-                'executionTime' => $executionTime,
-                'totalPagesAnalyzed' => $mergedData['metrics']['totalPages'] ?? 0,
-                'similarityCalculations' => 0, // Fait par Scheduler
-                'fromCache' => false, // Données de la DB
+                'executionTime' => $executionTime, // Temps chargement module
+                'storedSimilarities' => $totalStoredSimilarities, // Nombre total de paires stockées > seuil
+                'fromCache' => false, // Toujours faux
             ];
 
-            // Récupérer les stats de langue
+            // Nombre de pages uniques DANS les résultats affichés (celles avec au moins 1 similarité > seuil)
+            $totalValidatedPages = $mergedData['metrics']['totalPages'] ?? 0;
+
+            // Récupérer les stats de langue basées sur les pages dans les résultats
             $pageIdsInResults = array_keys($mergedData['results'] ?? []);
             $pagesForLangStats = [];
             if(!empty($pageIdsInResults)) {
+                // Assurez-vous que getMenuForPages récupère bien le sys_language_uid
                 $pagesForLangStats = $this->getPageRepository()->getMenuForPages($pageIdsInResults, 'uid, sys_language_uid');
             }
+                // Recalcule les stats de langue basées sur les pages effectivement trouvées dans $mergedData
             $languageStatistics = $this->languageService->getLanguageStatistics($pagesForLangStats, $siteLanguages);
 
-            // Récupérer et préparer les messages Flash (V12 utilise renderFlashMessages)
-            $flashMessageQueue = $this->flashMessageService->getMessageQueueByIdentifier('core.template.flashMessages');
-            $flashMessages = $flashMessageQueue->renderFlashMessages(); // Pour V12
 
-            // Assigner les variables à la vue Fluid
+            // Récupérer et préparer les messages Flash (V12)
+            $flashMessageQueue = $this->flashMessageService->getMessageQueueByIdentifier('core.template.flashMessages');
+            $flashMessages = $flashMessageQueue->renderFlashMessages();
+
+            // Assigner les variables à la vue Fluid (VERSION MISE À JOUR)
             $moduleTemplate->assignMultiple([
-                'parentPageId' => $parentPageId, 'depth' => $depth, 'proximityThreshold' => $proximityThreshold,
+                // Config
+                'parentPageId' => $parentPageId,
+                'depth' => $depth,
+                'proximityThreshold' => $proximityThreshold,
                 'excludePages' => implode(', ', $excludePages),
+                'maxSuggestions' => $maxSuggestions,
+
+                // Visibilité
                 'showStatistics' => $showStatistics, 'showPerformanceMetrics' => $showPerformanceMetrics,
                 'showLanguageStatistics' => $showLanguageStatistics, 'showTopSimilarPairs' => $showTopSimilarPairs,
                 'showDistributionScores' => $showDistributionScores, 'showTopSimilarPages' => $showTopSimilarPages,
+                'nlpEnabled' => $nlpEnabled,
+
+                // Données (Mises à jour)
                 'performanceMetrics' => $showPerformanceMetrics ? $performanceMetrics : null,
                 'statistics' => $showStatistics ? ($mergedData['statistics'] ?? null) : null,
                 'analysisResults' => $mergedData['results'] ?? [],
+                    // Assurez-vous que la clé est bien 'statistics' ici
                 'languageStatistics' => $showLanguageStatistics ? ($languageStatistics['statistics'] ?? []) : null,
-                'totalValidatedPages' => $performanceMetrics['totalPagesAnalyzed'],
+                'totalValidatedPages' => $totalValidatedPages,
+
+                // Messages
                 'flashMessages' => $flashMessages,
             ]);
 
@@ -174,16 +222,15 @@ class LegacySemanticBackendController extends ActionController
             return $moduleTemplate->renderResponse('SemanticBackend/Index');
 
         } catch (\Exception $e) {
-            $this->logger->error('Error in indexAction (Legacy)', ['exception' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            $this->addFlashMessage('An error occurred (Legacy). Check logs: ' . $e->getMessage(), 'Error', ContextualFeedbackSeverity::ERROR);
-            $flashMessageQueue = $this->flashMessageService->getMessageQueueByIdentifier('core.template.flashMessages');
-            $flashMessages = $flashMessageQueue->renderFlashMessages(); // Pour V12
-            $moduleTemplate->assignMultiple(['flashMessages' => $flashMessages, 'errorMessage' => 'An error occurred (Legacy). Check logs.']);
-            return $moduleTemplate->renderResponse('SemanticBackend/Index');
+                $this->logger->error('Error in indexAction (Legacy)', ['exception' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                // Utilisation de la méthode addFlashMessage définie dans la classe
+                $this->addFlashMessage('An error occurred (Legacy). Check logs: ' . $e->getMessage(), 'Error', ContextualFeedbackSeverity::ERROR);
+                $flashMessageQueue = $this->flashMessageService->getMessageQueueByIdentifier('core.template.flashMessages');
+                $flashMessages = $flashMessageQueue->renderFlashMessages(); // Pour V12
+                $moduleTemplate->assignMultiple(['flashMessages' => $flashMessages, 'errorMessage' => 'An error occurred (Legacy). Check logs.']);
+                return $moduleTemplate->renderResponse('SemanticBackend/Index');
         }
-    }
-
-    // --- Méthodes Utilitaires (gardez celles qui fonctionnaient en V12) ---
+    } 
 
     protected function getAnalysisFromDatabase(int $parentPageId, int $depth, float $proximityThreshold, array $excludePages, int $currentLanguageUid): array
     {

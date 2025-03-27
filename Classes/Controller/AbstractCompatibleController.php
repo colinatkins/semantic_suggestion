@@ -4,7 +4,7 @@ namespace TalanHdf\SemanticSuggestion\Controller;
 
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
 use TYPO3\CMS\Extbase\Mvc\Controller\Arguments;
-use ReflectionProperty; // Ajouter la classe ReflectionProperty
+use ReflectionProperty; // Assurez-vous que ce 'use' est présent
 
 /**
  * Classe abstraite compatible entre TYPO3 v12 et v13
@@ -27,25 +27,23 @@ abstract class AbstractCompatibleController extends ActionController
         parent::initializeAction();
 
         // Assigner les settings (hérités du parent) à la vue
-        // Ajouter une vérification de sécurité pour $this->settings
         if (isset($this->view) && $this->view !== null && property_exists($this, 'settings') && isset($this->settings)) {
             $this->view->assign('settings', $this->settings);
         }
     }
 
-    /**
+    // !! SUPPRIMEZ LA MÉTHODE initializeActionMethodValidators CI-DESSOUS !!
+    /*
      * @inheritDoc
      */
+    /*
     protected function initializeActionMethodValidators(): void
     {
-        // IMPORTANT : Ne PAS appeler ensureArgumentsAreInitialized() ici.
-        // On laisse le processus standard d'Extbase initialiser $arguments.
-        // L'erreur précédente dans count() ne devrait plus se produire si notre
-        // code n'interfère pas ici.
-
         // Appel direct au parent.
         parent::initializeActionMethodValidators();
     }
+    */
+
 
     /**
      * Initialise la propriété $arguments de façon sûre en utilisant la réflexion
@@ -55,16 +53,22 @@ abstract class AbstractCompatibleController extends ActionController
     private function ensureArgumentsAreInitializedSafelyUsingReflection(): void
     {
         try {
-            // Vérifier via Réflexion si la propriété $arguments (héritée) est initialisée
+            // Utiliser la réflexion pour vérifier si la propriété (héritée) est initialisée
             $reflection = new ReflectionProperty(ActionController::class, 'arguments');
-            if (!$reflection->isInitialized($this)) {
-                // Si elle n'est PAS initialisée à ce stade (ce qui serait peut-être
-                // inattendu mais possible), on l'initialise nous-mêmes.
+            // Note: Sur certaines versions de PHP/TYPO3, isInitialized peut ne pas exister
+            // ou nécessiter PHP >= 7.4. Ajout d'une condition pour vérifier son existence.
+            if (method_exists($reflection, 'isInitialized') && !$reflection->isInitialized($this)) {
+                // Si non initialisée, on l'initialise nous-mêmes.
                 $this->arguments = new Arguments();
+            } elseif (!method_exists($reflection, 'isInitialized')) {
+                 // Fallback pour versions PHP < 7.4 ou si isInitialized n'existe pas
+                 // Tenter une initialisation classique si $arguments n'est pas déjà un objet
+                 if (!isset($this->arguments) || !$this->arguments instanceof Arguments) {
+                      $this->arguments = new Arguments();
+                 }
             }
         } catch (\ReflectionException $e) {
-            // En cas d'échec de la réflexion (très peu probable),
-            // on tente une initialisation classique par sécurité si $arguments n'est pas déjà un objet.
+            // En cas d'échec de la réflexion, initialiser par sécurité
             if (!isset($this->arguments) || !$this->arguments instanceof Arguments) {
                  $this->arguments = new Arguments();
             }

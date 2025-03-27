@@ -113,9 +113,10 @@ class SemanticBackendController extends ActionController
             // Préparer les métriques de performance
             $performanceMetrics = [
                 'executionTime' => $executionTime,
-                'totalPagesAnalyzed' => $mergedData['metrics']['totalPages'] ?? 0, // Total pages uniques trouvées en DB
-                'similarityCalculations' => 0, // Fait par Scheduler
-                'fromCache' => false, // Données lues de la DB
+                'totalPagesAnalyzed' => $mergedData['metrics']['totalPages'] ?? 0,
+                // 'similarityCalculations' => 0, // Remplacé
+                'storedSimilarities' => $totalStoredSimilarities, // Nouvelle métrique
+                'fromCache' => false,
             ];
 
             // Récupérer les stats de langue basées sur les pages trouvées en DB
@@ -128,6 +129,26 @@ class SemanticBackendController extends ActionController
 
             // Récupérer et vider les messages Flash
             $flashMessages = $this->flashMessageService->getMessageQueueByIdentifier('core.template.flashMessages')->getAllMessagesAndFlush(); // Pour V13+
+
+            $totalStoredSimilarities = 0;
+            try {
+                $countQueryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
+                    ->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
+                $totalStoredSimilarities = (int)$countQueryBuilder
+                    ->count('uid')
+                    ->from('tx_semanticsuggestion_similarities')
+                    ->where(
+                        // Mêmes conditions que getAnalysisFromDatabase pour la cohérence
+                        $countQueryBuilder->expr()->eq('root_page_id', $countQueryBuilder->createNamedParameter($parentPageId, ParameterType::INTEGER)),
+                        $countQueryBuilder->expr()->eq('sys_language_uid', $countQueryBuilder->createNamedParameter($currentLanguageUid, ParameterType::INTEGER)), // Assurez-vous que $currentLanguageUid est défini ici
+                        $countQueryBuilder->expr()->gte('similarity_score', $countQueryBuilder->createNamedParameter($proximityThreshold, ParameterType::STRING))
+                    )
+                    ->executeQuery()
+                    ->fetchOne();
+            } catch (\Exception $e) {
+                $this->logger->error('Failed to count stored similarities', ['exception' => $e->getMessage()]);
+            }
+
 
             // Assigner les variables à la vue Fluid
             $moduleTemplate->assignMultiple([

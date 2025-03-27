@@ -51,7 +51,7 @@ return function (ContainerConfigurator $configurator, ContainerBuilder $containe
 
     if ($versionInformation->getMajorVersion() < 13) {
         // Services pour v12
-        $services->set(SemanticBackendController::class)
+        $services->set(LegacySemanticBackendController::class)
         ->public(true)
         ->tag('controller.backend_controller')
         ->args([

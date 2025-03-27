@@ -3,7 +3,7 @@
 namespace TalanHdf\SemanticSuggestion\Controller;
 
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
-use TYPO3\CMS\Extbase\Mvc\Controller\Arguments;
+use TYPO3\CMS\Extbase\Mvc\Controller\Arguments; // Assurez-vous que cette ligne 'use' est présente
 
 /**
  * Classe abstraite compatible entre TYPO3 v12 et v13
@@ -12,33 +12,44 @@ use TYPO3\CMS\Extbase\Mvc\Controller\Arguments;
 abstract class AbstractCompatibleController extends ActionController
 {
     /**
-     * Override de la propriété settings pour éviter l'erreur d'accès avant initialisation
+     * Settings
      *
-     * @var array
+     * @var array // Annotation phpDoc pour la clarté
      */
-    protected array $settings = [];
+    protected $settings = []; // Pas de type hint natif pour compatibilité v12
+
+    /**
+     * Arguments de l'action.
+     * Déclarée ici pour s'assurer qu'elle existe, sans type hint natif.
+     * L'initialisation est gérée dans les méthodes initialize*.
+     * @var Arguments|null
+     */
+    protected $arguments;
 
     /**
      * @inheritDoc
      */
     protected function initializeAction(): void
     {
-        // Vérification sécurisée de la propriété arguments
-        $this->initializeArgumentsProperty();
-        
-        // Appel au parent une seule fois
+        // S'assurer que $arguments est initialisé avant l'appel parent si nécessaire
+        $this->ensureArgumentsAreInitialized();
+
+        // Appel au parent
         parent::initializeAction();
-        
-        // S'assurer que settings est passé à la vue si elle existe
-        // et configurer les chemins de templates si nécessaire
+
+        // Assigner les settings à la vue pour le frontend (principalement)
+        // et potentiellement d'autres initialisations si nécessaire ici.
         if (isset($this->view) && $this->view !== null) {
-            // Ajouter explicitement les chemins de templates
+             // Le code pour setTemplateRootPaths est commenté car normalement géré
+             // par Configuration/Backend/Modules.php pour le backend
+             /*
             if (method_exists($this->view, 'setTemplateRootPaths')) {
                 $this->view->setTemplateRootPaths([
                     0 => 'EXT:semantic_suggestion/Resources/Private/Templates/'
                 ]);
             }
-            
+            */
+
             // Assigner les settings à la vue
             $this->view->assign('settings', $this->settings);
         }
@@ -49,27 +60,23 @@ abstract class AbstractCompatibleController extends ActionController
      */
     protected function initializeActionMethodValidators(): void
     {
-        // Vérification sécurisée de la propriété arguments
-        $this->initializeArgumentsProperty();
-        
-        // Appel au parent
+        // Point crucial : Assurer l'initialisation AVANT l'appel parent
+        $this->ensureArgumentsAreInitialized();
+
+        // Appel au parent qui contient la ligne $this->arguments->count()
         parent::initializeActionMethodValidators();
     }
-    
+
     /**
-     * Initialise la propriété $arguments de façon sûre
+     * Initialise la propriété $arguments si elle n'est pas déjà un objet Arguments.
+     * Cette méthode est plus simple et plus directe que la précédente avec réflexion.
      */
-    private function initializeArgumentsProperty(): void
+    private function ensureArgumentsAreInitialized(): void
     {
-        if (property_exists($this, 'arguments') && !isset($this->arguments)) {
-            try {
-                $reflection = new \ReflectionProperty(ActionController::class, 'arguments');
-                if (!$reflection->isInitialized($this)) {
-                    $this->arguments = new Arguments();
-                }
-            } catch (\ReflectionException $e) {
-                $this->arguments = new Arguments();
-            }
+        if (!$this->arguments instanceof Arguments) {
+             // Si $arguments n'est pas déjà un objet Arguments (inclut le cas où il est null),
+             // on l'initialise.
+            $this->arguments = new Arguments();
         }
     }
 }

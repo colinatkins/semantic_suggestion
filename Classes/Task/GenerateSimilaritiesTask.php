@@ -18,25 +18,30 @@ use Psr\Log\LoggerInterface;
 
 class GenerateSimilaritiesTask extends AbstractTask
 {
+    /**
+     * ID de la page de départ pour l'analyse
+     * @var int
+     */
+    public $startPageId = 1;
+    
+    /**
+     * Liste des pages à exclure (format: "42,56,78")
+     * @var string
+     */
+    public $excludePages = '';
+    
+    /**
+     * Seuil minimum de similarité pour enregistrer en BDD
+     * @var float
+     */
+    public $minimumSimilarity = 0.5;
+    
     protected ?LoggerInterface $logger = null;
     protected ?PageAnalysisService $pageAnalysisService = null;
     protected ?ConnectionPool $connectionPool = null;
     protected ?CacheManager $cacheManager = null;
     protected ?ConfigurationManagerInterface $configurationManager = null;
     protected ?PageRepository $pageRepository = null;
-    
-    /**
-     * Configuration par défaut si non spécifiée dans TypoScript
-     */
-    protected array $defaultConfig = [
-        'parentPageId' => 1,
-        'proximityThreshold' => 0.5,
-        'maxSuggestions' => 5,
-        'excerptLength' => 150,
-        'recursive' => 1,
-        'excludePages' => '',
-        'recencyWeight' => 0.2
-    ];
     
     public function __construct()
     {
@@ -63,57 +68,43 @@ class GenerateSimilaritiesTask extends AbstractTask
     {
         try {
             $this->initializeDependencies();
-            $this->logger->info('Starting similarity generation task');
+            $this->logger->info('Starting similarity generation task', [
+                'startPageId' => $this->startPageId,
+                'minimumSimilarity' => $this->minimumSimilarity
+            ]);
 
-            // Récupérer tous les sites
-            $siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
-            $sites = $siteFinder->getAllSites();
+            // Convertir la liste de pages exclues en tableau
+            $excludePages = !empty($this->excludePages) 
+                ? GeneralUtility::intExplode(',', $this->excludePages, true) 
+                : [];
+            
+            // Récupérer toutes les pages à partir du startPageId
+            $pages = $this->getPages($this->startPageId, 999, 0, $excludePages);
 
-            foreach ($sites as $site) {
-                $rootPageId = $site->getRootPageId();
-                $siteConfig = $this->getSiteConfiguration($rootPageId);
-                
-                $this->logger->info('Processing site', [
-                    'rootPageId' => $rootPageId,
-                    'config' => $siteConfig
+            if (empty($pages)) {
+                $this->logger->warning('No pages found', [
+                    'startPageId' => $this->startPageId
                 ]);
+                return true; // Retourner true car la tâche s'est exécutée correctement, même sans données
+            }
+
+            // Analyse pour chaque langue
+            $siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
+            $site = $siteFinder->getSiteByPageId($this->startPageId);
+            
+            foreach ($site->getAllLanguages() as $language) {
+                $languageId = $language->getLanguageId();
                 
-                $parentPageId = (int)($siteConfig['parentPageId'] ?? $rootPageId);
-                $depth = (int)($siteConfig['recursive'] ?? 1);
-                $excludePages = GeneralUtility::intExplode(',', $siteConfig['excludePages'] ?? '', true);
-                
-                // Appliquer les paramètres à PageAnalysisService
-                $this->pageAnalysisService->setSettings($siteConfig);
+                $this->logger->info('Processing language', [
+                    'startPageId' => $this->startPageId,
+                    'language' => $languageId
+                ]);
 
-                $languages = $site->getAllLanguages();
+                // Analyser les similitudes
+                $analysisData = $this->pageAnalysisService->analyzePages($pages, $languageId);
 
-                foreach ($languages as $language) {
-                    $languageId = $language->getLanguageId();
-                    
-                    $this->logger->info('Processing language', [
-                        'rootPageId' => $rootPageId,
-                        'parentPageId' => $parentPageId,
-                        'language' => $languageId
-                    ]);
-
-                    // Récupérer toutes les pages du site pour cette langue avec la profondeur configurée
-                    $pages = $this->getPages($parentPageId, $depth, $languageId, $excludePages);
-
-                    if (empty($pages)) {
-                        $this->logger->warning('No pages found', [
-                            'parentPageId' => $parentPageId,
-                            'language' => $languageId,
-                            'depth' => $depth
-                        ]);
-                        continue;
-                    }
-
-                    // Analyser les similarités
-                    $analysisData = $this->pageAnalysisService->analyzePages($pages, $languageId);
-
-                    // Sauvegarder les résultats
-                    $this->saveResults($analysisData, $rootPageId, $languageId, (float)($siteConfig['proximityThreshold'] ?? 0.5));
-                }
+                // Sauvegarder les résultats
+                $this->saveResults($analysisData, $this->startPageId, $languageId, $this->minimumSimilarity);
             }
 
             $this->logger->info('Similarity generation task completed successfully');
@@ -125,31 +116,6 @@ class GenerateSimilaritiesTask extends AbstractTask
                 'trace' => $e->getTraceAsString()
             ]);
             return false;
-        }
-    }
-
-    /**
-     * Récupère la configuration TypoScript pour le site
-     */
-    protected function getSiteConfiguration(int $rootPageId): array
-    {
-        try {
-            // Récupérer la configuration du site à partir de TypoScript
-            $fullTypoScript = $this->configurationManager->getConfiguration(
-                ConfigurationManagerInterface::CONFIGURATION_TYPE_FULL_TYPOSCRIPT
-            );
-            
-            $siteConfig = $fullTypoScript['plugin.']['tx_semanticsuggestion_suggestions.']['settings.'] ?? [];
-            
-            // Fusionner avec les valeurs par défaut pour s'assurer que tous les paramètres nécessaires sont présents
-            return array_merge($this->defaultConfig, $siteConfig);
-            
-        } catch (\Exception $e) {
-            $this->logger->warning('Could not retrieve site configuration, using defaults', [
-                'rootPageId' => $rootPageId,
-                'exception' => $e->getMessage()
-            ]);
-            return $this->defaultConfig;
         }
     }
 
@@ -208,16 +174,18 @@ class GenerateSimilaritiesTask extends AbstractTask
         $connection = $this->connectionPool->getConnectionForTable('tx_semanticsuggestion_similarities');
         
         try {
-            // Commencer une transaction pour optimiser les performances
+            // Commencer une transaction
             $connection->beginTransaction();
             
             // Supprimer les anciennes entrées pour ce site et cette langue
             $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
+            
+            // Version compatible TYPO3 v12 et v13
             $queryBuilder
                 ->delete('tx_semanticsuggestion_similarities')
                 ->where(
-                    $queryBuilder->expr()->eq('root_page_id', $queryBuilder->createNamedParameter($rootPageId, \Doctrine\DBAL\ParameterType::INTEGER)), // MODIFIÉ
-                    $queryBuilder->expr()->eq('sys_language_uid', $queryBuilder->createNamedParameter($languageId, \Doctrine\DBAL\ParameterType::INTEGER)) // MODIFIÉ
+                    $queryBuilder->expr()->eq('root_page_id', $queryBuilder->createNamedParameter($rootPageId)),
+                    $queryBuilder->expr()->eq('sys_language_uid', $queryBuilder->createNamedParameter($languageId))
                 )
                 ->executeStatement();
             
@@ -225,13 +193,7 @@ class GenerateSimilaritiesTask extends AbstractTask
             $bulkInserts = [];
             $now = time();
             
-            // Log du seuil utilisé pour le filtrage
             $this->logger->info('Using threshold for filtering', ['threshold' => $proximityThreshold]);
-            
-            // Pour tester, forcer temporairement une valeur très basse
-            //$proximityThreshold = 0.05; // <-- AJOUTEZ CETTE LIGNE POUR TESTER
-            
-            $this->logger->info('Using FORCED threshold for testing', ['threshold' => $proximityThreshold]);
             
             foreach ($analysisData['results'] as $pageId => $pageData) {
                 foreach ($pageData['similarities'] as $similarPageId => $similarity) {
@@ -241,14 +203,14 @@ class GenerateSimilaritiesTask extends AbstractTask
                             'page_id' => $pageId,
                             'similar_page_id' => $similarPageId,
                             'similarity_score' => $similarity['score'],
-                            'root_page_id' => $rootPageId,
+                            'root_page_id' => $rootPageId, // Utiliser l'ID fourni
                             'sys_language_uid' => $languageId,
                             'crdate' => $now,
                             'tstamp' => $now
                         ];
                     }
                     
-                    // Insérer par lots de 100 pour optimiser les performances
+                    // Insérer par lots pour optimiser les performances
                     if (count($bulkInserts) >= 100) {
                         $this->bulkInsert($bulkInserts);
                         $bulkInserts = [];

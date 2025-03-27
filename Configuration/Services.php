@@ -44,34 +44,40 @@ return function (ContainerConfigurator $configurator, ContainerBuilder $containe
     $services->set(TYPO3\CMS\Core\Domain\Repository\PageRepository::class)->public(true);
     $services->set(TYPO3\CMS\Extbase\Configuration\ConfigurationManager::class)->public(true);
     $services->alias(TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface::class, TYPO3\CMS\Extbase\Configuration\ConfigurationManager::class)->public(true);
+    $services->set(TYPO3\CMS\Core\Database\ConnectionPool::class)->public(true);
 
     // --- Enregistrements Conditionnels ---
     $versionInformation = GeneralUtility::makeInstance(Typo3Version::class);
 
     if ($versionInformation->getMajorVersion() < 13) {
         // Services pour v12
-        $services->set(LegacySemanticBackendController::class)
-                 ->public(true)
-                 ->args([
-                      service(TYPO3\CMS\Backend\Template\ModuleTemplateFactory::class),
-                      service(TalanHdf\SemanticSuggestion\Service\PageAnalysisService::class),
-                      service(TYPO3\CMS\Core\Log\LogManager::class),
-                      service(TalanHdf\SemanticSuggestion\Service\LanguageService::class),
-                      service(TYPO3\CMS\Core\Messaging\FlashMessageService::class)
-                  ]);
+        $services->set(SemanticBackendController::class)
+        ->public(true)
+        ->tag('controller.backend_controller')
+        ->args([
+            service(TYPO3\CMS\Backend\Template\ModuleTemplateFactory::class),
+            service(TalanHdf\SemanticSuggestion\Service\PageAnalysisService::class),
+            service(TYPO3\CMS\Core\Log\LogManager::class),
+            service(TalanHdf\SemanticSuggestion\Service\LanguageService::class),
+            service(TYPO3\CMS\Core\Messaging\FlashMessageService::class),
+            service(TYPO3\CMS\Core\Domain\Repository\PageRepository::class),
+            service(TYPO3\CMS\Core\Database\ConnectionPool::class) // This is now the 7th argument
+        ]);
 
     } else {
-        // Services pour v13+
+        // v13+ definition (already correct)
         $services->set(SemanticBackendController::class)
-                 ->public(true)
-                 ->tag('controller.backend_controller')
-                 ->args([
-                      service(TYPO3\CMS\Backend\Template\ModuleTemplateFactory::class),
-                      service(TalanHdf\SemanticSuggestion\Service\PageAnalysisService::class),
-                      service(TYPO3\CMS\Core\Log\LogManager::class),
-                      service(TalanHdf\SemanticSuggestion\Service\LanguageService::class),
-                      service(TYPO3\CMS\Core\Messaging\FlashMessageService::class)
-                  ]);
+        ->public(true)
+        ->tag('controller.backend_controller')
+        ->args([
+            service(TYPO3\CMS\Backend\Template\ModuleTemplateFactory::class),
+            service(TalanHdf\SemanticSuggestion\Service\PageAnalysisService::class),
+            service(TYPO3\CMS\Core\Log\LogManager::class),
+            service(TalanHdf\SemanticSuggestion\Service\LanguageService::class),
+            service(TYPO3\CMS\Core\Messaging\FlashMessageService::class),
+            service(TYPO3\CMS\Core\Domain\Repository\PageRepository::class),
+            service(TYPO3\CMS\Core\Database\ConnectionPool::class)
+        ]);
     }
 
     // --- SUPPRIMER la configuration du logger Monolog personnalisé ---

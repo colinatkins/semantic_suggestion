@@ -52,9 +52,12 @@ use TYPO3\CMS\Core\Log\Writer\FileWriter;
         ];
     }
 
-    // Scheduler (Inconditionnel)
+    // Enregistrement de la tâche Scheduler
     $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['scheduler']['tasks'][\TalanHdf\SemanticSuggestion\Task\GenerateSimilaritiesTask::class] = [
-        'extension' => 'semantic_suggestion', /* ... title, description ... */
+        'extension' => 'semantic_suggestion',
+        'title' => 'Générer les similarités sémantiques',
+        'description' => 'Analyse les pages du site et génère un tableau des similarités sémantiques',
+        'additionalFields' => \TalanHdf\SemanticSuggestion\Task\GenerateSimilaritiesAdditionalFieldProvider::class
     ];
 
     // Logger (Logique de chemin conditionnelle ou simplifiée)

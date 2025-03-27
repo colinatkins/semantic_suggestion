@@ -216,8 +216,8 @@ class GenerateSimilaritiesTask extends AbstractTask
             $queryBuilder
                 ->delete('tx_semanticsuggestion_similarities')
                 ->where(
-                    $queryBuilder->expr()->eq('root_page_id', $queryBuilder->createNamedParameter($rootPageId, \PDO::PARAM_INT)),
-                    $queryBuilder->expr()->eq('sys_language_uid', $queryBuilder->createNamedParameter($languageId, \PDO::PARAM_INT))
+                    $queryBuilder->expr()->eq('root_page_id', $queryBuilder->createNamedParameter($rootPageId, \Doctrine\DBAL\ParameterType::INTEGER)), // MODIFIÉ
+                    $queryBuilder->expr()->eq('sys_language_uid', $queryBuilder->createNamedParameter($languageId, \Doctrine\DBAL\ParameterType::INTEGER)) // MODIFIÉ
                 )
                 ->executeStatement();
             

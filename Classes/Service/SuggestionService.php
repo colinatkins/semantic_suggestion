@@ -278,9 +278,9 @@ class SuggestionService
             ->select('*')
             ->from('tx_semanticsuggestion_similarities')
             ->where(
-                $queryBuilder->expr()->eq('page_id', $queryBuilder->createNamedParameter($currentPageId, \PDO::PARAM_INT)),
-                $queryBuilder->expr()->gte('similarity_score', $queryBuilder->createNamedParameter($threshold, \PDO::PARAM_STR)),
-                $queryBuilder->expr()->eq('sys_language_uid', $queryBuilder->createNamedParameter($currentLanguageUid, \PDO::PARAM_INT))
+                $queryBuilder->expr()->eq('page_id', $queryBuilder->createNamedParameter($currentPageId, \Doctrine\DBAL\ParameterType::INTEGER)), // MODIFIÉ
+                $queryBuilder->expr()->gte('similarity_score', $queryBuilder->createNamedParameter($threshold, \Doctrine\DBAL\ParameterType::STRING)), // MODIFIÉ (PDO::PARAM_STR -> STRING)
+                $queryBuilder->expr()->eq('sys_language_uid', $queryBuilder->createNamedParameter($currentLanguageUid, \Doctrine\DBAL\ParameterType::INTEGER)) // MODIFIÉ
             )
             ->orderBy('similarity_score', 'DESC')
             ->setMaxResults($maxSuggestions)

@@ -15,5 +15,16 @@ return [
                 'index', 'list'
             ],
         ],
+        'view' => [
+            'templateRootPaths' => [
+                100 => 'EXT:semantic_suggestion/Resources/Private/Templates/',
+            ],
+            'partialRootPaths' => [
+                100 => 'EXT:semantic_suggestion/Resources/Private/Partials/',
+            ],
+            'layoutRootPaths' => [
+                100 => 'EXT:semantic_suggestion/Resources/Private/Layouts/',
+            ],
+        ],
     ],
 ];

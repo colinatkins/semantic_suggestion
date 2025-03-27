@@ -28,13 +28,13 @@ services:
       $logManager: '@TYPO3\CMS\Core\Log\LogManager'
     tags:
       - name: 'backend.controller'
-      
+
   TalanHdf\SemanticSuggestion\Service\UtilityService:
     public: true
     arguments:
       $pageAnalysisService: '@TalanHdf\SemanticSuggestion\Service\PageAnalysisService'
       $logManager: '@TYPO3\CMS\Core\Log\LogManager'
-      
+
   TalanHdf\SemanticSuggestion\Service\SuggestionService:
     public: true
     arguments:
@@ -55,11 +55,11 @@ services:
 
   TalanHdf\SemanticSuggestion\Controller\SemanticBackendController:
     public: true
-    autowire: true
-    autoconfigure: true
-    tags: ['controller.backend_controller']
     arguments:
       $moduleTemplateFactory: '@TYPO3\CMS\Backend\Template\ModuleTemplateFactory'
       $pageAnalysisService: '@TalanHdf\SemanticSuggestion\Service\PageAnalysisService'
       $logManager: '@TYPO3\CMS\Core\Log\LogManager'
       $languageService: '@TalanHdf\SemanticSuggestion\Service\LanguageService'
+      $flashMessageService: '@TYPO3\CMS\Core\Messaging\FlashMessageService'  # Ajouté ici
+    tags:
+      - name: 'controller.backend_controller'

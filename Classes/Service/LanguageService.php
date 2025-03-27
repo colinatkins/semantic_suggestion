@@ -1,102 +1,75 @@
 <?php
-
 namespace TalanHdf\SemanticSuggestion\Service;
 
-use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Site\SiteFinder;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
-use TYPO3\CMS\Core\Site\Entity\NullSite;
+use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Log\LogManager;
+use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
+use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
 
 class LanguageService implements LoggerAwareInterface
 {
-    use LoggerAwareTrait;
-
     protected SiteFinder $siteFinder;
     protected Context $context;
+    protected LogManager $logManager;
+    protected LoggerInterface $logger;
 
-    public function __construct(
-        SiteFinder $siteFinder,
-        Context $context,
-        LogManager $logManager
-    ) {
+    public function __construct(SiteFinder $siteFinder, Context $context, LogManager $logManager)
+    {
         $this->siteFinder = $siteFinder;
         $this->context = $context;
-        $this->setLogger($logManager->getLogger(__CLASS__));
+        $this->logManager = $logManager;
+        $this->logger = $logManager->getLogger(__CLASS__); // Initialisation par défaut
     }
 
     /**
-     * Calcule les statistiques de langue pour les pages données
-     *
-     * @param array $pages Pages à analyser
-     * @param array $siteLanguages Langues du site
-     * @return array Statistiques de langue
+     * Implémentation de LoggerAwareInterface
      */
+    public function setLogger(LoggerInterface $logger): void
+    {
+        $this->logger = $logger;
+    }
+
     public function getLanguageStatistics(array $pages, array $siteLanguages): array
     {
         $languageStats = [];
-        $totalPages = 0;
 
-        // Initialiser les statistiques pour chaque langue
         foreach ($siteLanguages as $language) {
+            if (!$language instanceof SiteLanguage) {
+                $this->logger->warning('Invalid language object received', ['language' => $language]);
+                continue;
+            }
+
             $languageId = $language->getLanguageId();
             $languageStats[$languageId] = [
                 'count' => 0,
                 'info' => [
                     'title' => $language->getTitle(),
-                    'twoLetterIsoCode' => $language->getTwoLetterIsoCode(),
+                    'twoLetterIsoCode' => method_exists($language, 'getTwoLetterIsoCode') ? $language->getTwoLetterIsoCode() : substr($language->getLocale(), 0, 2),
                     'flagIdentifier' => $language->getFlagIdentifier(),
                 ],
             ];
         }
 
-        // Compter les pages par langue
         foreach ($pages as $page) {
             $languageId = $page['sys_language_uid'] ?? 0;
             if (isset($languageStats[$languageId])) {
                 $languageStats[$languageId]['count']++;
-                $totalPages++;
             }
         }
 
-        // Calculer les pourcentages
-        foreach ($languageStats as &$stat) {
-            $stat['percentage'] = ($totalPages > 0) ? ($stat['count'] / $totalPages) * 100 : 0;
-        }
-
-        return [
-            'statistics' => $languageStats,
-            'totalPages' => $totalPages
-        ];
+        return ['statistics' => $languageStats];
     }
 
-    /**
-     * Récupère les langues configurées pour un site donné
-     *
-     * @param int $pageId ID de la page
-     * @return array Liste des langues du site
-     */
     public function getSiteLanguages(int $pageId): array
     {
         try {
             $site = $this->siteFinder->getSiteByPageId($pageId);
             return $site->getLanguages();
         } catch (\TYPO3\CMS\Core\Exception\SiteNotFoundException $e) {
-            $this->logger->warning(
-                sprintf('No site found for page ID %d. Using default language.', $pageId),
-                ['exception' => $e]
-            );
-            return [
-                new SiteLanguage(
-                    0,
-                    'en',
-                    new NullSite(),
-                    ['title' => 'Default', 'twoLetterIsoCode' => 'en', 'flagIdentifier' => 'en']
-                )
-            ];
+            $this->logger->warning('No site found for page ID ' . $pageId, ['exception' => $e->getMessage()]);
+            return [];
         }
     }
 
@@ -122,13 +95,24 @@ class LanguageService implements LoggerAwareInterface
         }
 
         // Assurer la présence de la langue par défaut
-        if (!isset($languages[0])) {
-            $defaultLanguage = $sites[array_key_first($sites)]->getDefaultLanguage();
-            $languages[0] = [
-                'title' => $defaultLanguage->getTitle(),
-                'twoLetterIsoCode' => $defaultLanguage->getTwoLetterIsoCode(),
-                'flagIdentifier' => $defaultLanguage->getFlagIdentifier(),
-            ];
+        if (!isset($languages[0]) && !empty($sites)) {
+            $siteKeys = array_keys($sites);
+            $firstKey = reset($siteKeys);
+            if ($firstKey !== false) {
+                $defaultLanguage = $sites[$firstKey]->getDefaultLanguage();
+                $languages[0] = [
+                    'title' => $defaultLanguage->getTitle(),
+                    'twoLetterIsoCode' => $defaultLanguage->getTwoLetterIsoCode(),
+                    'flagIdentifier' => $defaultLanguage->getFlagIdentifier(),
+                ];
+            } else {
+                // Fallback si aucun site n'est disponible
+                $languages[0] = [
+                    'title' => 'Default',
+                    'twoLetterIsoCode' => 'en',
+                    'flagIdentifier' => 'en',
+                ];
+            }
         }
 
         ksort($languages);

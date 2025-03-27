@@ -15,7 +15,8 @@
 
     <div class="semantic-analysis-container">
         <h1>Semantic Suggestion Analysis</h1>
-        <f:format.raw>{flashMessages}</f:format.raw> <f:if condition="{errorMessage}">
+        <f:flashMessages queueIdentifier="{flashMessageQueueIdentifier}" />
+         <f:if condition="{errorMessage}">
              <div class="alert alert-danger">{errorMessage}</div>
         </f:if>
 

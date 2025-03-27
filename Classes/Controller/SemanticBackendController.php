@@ -85,26 +85,35 @@ class SemanticBackendController extends ActionController
             }
 
             // S'il n'y a pas de langues de site, traiter au moins la langue par défaut (0)
+            $languagesToProcess = [];
             if (empty($siteLanguages)) {
-                $siteLanguages = [ GeneralUtility::makeInstance(\TYPO3\CMS\Core\Site\Entity\SiteLanguage::class, 0, 'default', new \Symfony\Component\HttpFoundation\ParameterBag(), $parentPageId) ];
                 $this->logger->warning('No site languages found, processing default language 0 only.');
+                $languagesToProcess = [0]; // Utiliser directement l'ID de langue 0
+            } else {
+                $languagesToProcess = $siteLanguages; // Utiliser le tableau d'objets SiteLanguage
             }
-
+            
             // Lire les données depuis la base pour toutes les langues disponibles
             $allLanguageData = [];
             $firstLanguageUidProcessed = null;
-
-            foreach ($siteLanguages as $language) {
-                $languageUid = $language->getLanguageId();
+            
+            foreach ($languagesToProcess as $languageInfo) { // Boucle sur $languageInfo (peut être un objet ou un int)
+                // Récupérer l'ID de langue correctement
+                $languageUid = ($languageInfo instanceof \TYPO3\CMS\Core\Site\Entity\SiteLanguage)
+                             ? $languageInfo->getLanguageId()
+                             : (int)$languageInfo; // Caster en int si c'est l'ID 0
+            
                 if ($firstLanguageUidProcessed === null) {
                     $firstLanguageUidProcessed = $languageUid;
                 }
+            
+                // Lire les données depuis la DB pour cette langue
                 $dbData = $this->getAnalysisFromDatabase(
                     $parentPageId,
                     $depth,
                     $proximityThreshold,
                     $excludePages,
-                    $languageUid
+                    $languageUid // Utiliser l'ID extrait
                 );
                 $allLanguageData[$languageUid] = $dbData;
             }

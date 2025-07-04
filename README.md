@@ -51,9 +51,9 @@ Since version 2.0.0, similarity scores are **stored in a dedicated database tabl
 -   [Requirements](#requirements)
 -   [Installation](#installation)
 -   [Configuration](#configuration)
-    -   [TypoScript Settings](#typoscript-settings-setuptyposcript)
-    * [Scheduler Task Settings](#scheduler-task-settings)
-    * [Configuration Interaction](#configuration-interaction)
+    -   [Scheduler Task Configuration](#scheduler-task-configuration)
+    -   [TypoScript Settings](#typoscript-settings)
+    -   [Configuration Interaction](#configuration-interaction)
 -   [Usage (Frontend)](#usage-frontend)
 -   [Backend Module](#backend-module)
 -   [Scheduler Task](#scheduler-task-1)
@@ -105,40 +105,78 @@ Since version 2.0.0, similarity scores are **stored in a dedicated database tabl
 
 ## Configuration
 
-The extension's configuration is split between TypoScript settings and Scheduler task settings.
+⚠️ **Important**: The extension's configuration is split between **Scheduler task settings** (analysis scope and execution) and **TypoScript settings** (frontend display and algorithm parameters).
 
-### TypoScript Settings (`setup.typoscript`)
+### Scheduler Task Configuration
 
-These settings primarily control the **frontend display** and the **details of the analysis algorithm**. Define them in your TypoScript Setup file under `plugin.tx_semanticsuggestion_suggestions.settings`.
+**This is the primary configuration** that controls the analysis execution and what gets stored in the database.
+
+Create a **"Semantic Suggestion: Generate Similarities"** task in the TYPO3 Scheduler module with these settings:
+
+- **`startPageId`** (required): The UID of the root page from which the analysis will begin. This defines the scope of the analysis for this task run. Each task execution is linked to a Start Page ID (stored as `root_page_id` in the DB).
+  - Example: `1` (for site root page)
+  
+- **`excludePages`** (optional): Comma-separated list of page UIDs that will **not be analyzed**, and their similarities will **not be stored**.
+  - Example: `42,56,78`
+  
+- **`minimumSimilarity`** (required): Threshold (0.0 to 1.0) below which a pair of similar pages will **not be saved** to the database. This controls storage efficiency.
+  - Example: `0.3` (saves only pairs with similarity ≥ 30%)
+
+**Recommended scheduling:**
+- Frequency: Daily or weekly
+- Execution time: During off-peak hours (e.g., 2:00 AM)
+
+### TypoScript Settings
+
+These settings control the **frontend display** and the **details of the analysis algorithm**. Define them in your TypoScript Setup file under `plugin.tx_semanticsuggestion_suggestions.settings`.
+
+#### Constants (constants.typoscript)
 
 ```typoscript
+plugin.tx_semanticsuggestion_suggestions.settings {
+    # --- Frontend Display Settings ---
+    proximityThreshold = 0.5     # Minimum similarity threshold TO DISPLAY a suggestion (0.0 to 1.0)
+    maxSuggestions = 3           # Maximum number of suggestions to display
+    excerptLength = 100          # Max length of the text excerpt
+    excludePages =               # Pages to exclude from DISPLAY (comma-separated list of UIDs)
+
+    # --- Analysis Algorithm Settings (Used by Scheduler task) ---
+    recencyWeight = 0.2          # Weight of recency in the final score (0.0 to 1.0)
+    
+    # Fields analyzed and their weights
+    analyzedFields {
+        title = 1.5              # Weight of page title
+        description = 1.0        # Weight of page description
+        keywords = 2.0           # Weight of page keywords
+        abstract = 1.2           # Weight of page abstract
+        content = 1.0            # Weight of page content elements
+    }
+
+    # --- Debugging ---
+    debugMode = 0                # Enable debug logs (0 or 1)
+}
+```
+
+#### Setup (setup.typoscript)
+
+```typoscript
+# Main plugin configuration
 plugin.tx_semanticsuggestion_suggestions {
     settings {
-        # --- Frontend Display Settings ---
-        maxSuggestions = 5       # Maximum number of suggestions to display
-        proximityThreshold = 0.5 # Minimum similarity threshold TO DISPLAY a suggestion (0.0 to 1.0)
-        excerptLength = 150      # Max length of the text excerpt
-        excludePages = 8,9,3456  # Pages to exclude from DISPLAY (comma-separated list of UIDs)
-
-        # --- Analysis Algorithm Settings (Used by Scheduler task via PageAnalysisService) ---
-        recencyWeight = 0.2      # Weight of recency in the final score (0.0 to 1.0)
-        analyzedFields {         # Fields analyzed and their weights
-            title = 1.5
-            description = 1.0
-            keywords = 2.0
-            abstract = 1.2
-            content = 1.0        # Content from the page's content elements
+        proximityThreshold = {$plugin.tx_semanticsuggestion_suggestions.settings.proximityThreshold}
+        maxSuggestions = {$plugin.tx_semanticsuggestion_suggestions.settings.maxSuggestions}
+        excludePages = {$plugin.tx_semanticsuggestion_suggestions.settings.excludePages}
+        excerptLength = {$plugin.tx_semanticsuggestion_suggestions.settings.excerptLength}
+        recencyWeight = {$plugin.tx_semanticsuggestion_suggestions.settings.recencyWeight}
+        debugMode = {$plugin.tx_semanticsuggestion_suggestions.settings.debugMode}
+        
+        analyzedFields {
+            title = {$plugin.tx_semanticsuggestion_suggestions.settings.analyzedFields.title}
+            description = {$plugin.tx_semanticsuggestion_suggestions.settings.analyzedFields.description}
+            keywords = {$plugin.tx_semanticsuggestion_suggestions.settings.analyzedFields.keywords}
+            abstract = {$plugin.tx_semanticsuggestion_suggestions.settings.analyzedFields.abstract}
+            content = {$plugin.tx_semanticsuggestion_suggestions.settings.analyzedFields.content}
         }
-        # defaultLanguage = 'en' # ISO language code (e.g., 'fr', 'en') to use if detection fails
-
-        # --- Backend Module Settings (Optional) ---
-        showStatistics = 1
-        showPerformanceMetrics = 1
-        showLanguageStatistics = 1
-        # ... other show* settings
-
-        # --- Debugging ---
-        debugMode = 0            # Enable debug logs (0 or 1)
     }
     view {
         # Paths to your Fluid templates if you wish to customize them
@@ -147,21 +185,29 @@ plugin.tx_semanticsuggestion_suggestions {
         layoutRootPaths.10 = EXT:your_extension/Resources/Private/Layouts/
     }
 }
-````
 
-### Scheduler Task Settings
+# Reusable TypoScript object
+lib.semantic_suggestion = USER
+lib.semantic_suggestion {
+    userFunc = TYPO3\CMS\Extbase\Core\Bootstrap->run
+    extensionName = SemanticSuggestion
+    pluginName = Suggestions
+    vendorName = TalanHdf
+    
+    view =< plugin.tx_semanticsuggestion_suggestions.view
+    persistence =< plugin.tx_semanticsuggestion_suggestions.persistence
+    settings =< plugin.tx_semanticsuggestion_suggestions.settings
+}
 
-These settings are defined directly in the TYPO3 **Scheduler** module interface when creating/editing the **"Semantic Suggestion: Generate Similarities"** task. They control the **analysis execution** and **what gets stored in the database**.
-
-  - **`Start Page ID`**: The UID of the root page from which the subpage analysis will begin. This defines the scope of the analysis for this task run. Each task execution is linked to a `Start Page ID` (stored as `root_page_id` in the DB).
-  - **`Pages to exclude`**: Comma-separated list of page UIDs that will **not be analyzed**, and their similarities will **not be stored**.
-  - **`Minimum similarity threshold`**: Threshold (0.0 to 1.0) below which a pair of similar pages will **not be saved** to the database. This is the `minimumSimilarity` used for storage.
+# Content element integration
+tt_content.list.20.semanticsuggestion_suggestions =< plugin.tx_semanticsuggestion_suggestions
+```
 
 ### Configuration Interaction
 
-  - **Analysis Scope**: Defined by the Scheduler task's `Start Page ID`.
-  - **DB Storage**: Controlled by the Scheduler task's `Minimum similarity threshold` and `Pages to exclude`.
-  - **Similarity Calculation**: Performed by the `PageAnalysisService` (called by the Cron task), which uses the TypoScript settings `analyzedFields` and `recencyWeight`.
+  - **Analysis Scope**: Defined by the Scheduler task's `startPageId`.
+  - **DB Storage**: Controlled by the Scheduler task's `minimumSimilarity` and `excludePages`.
+  - **Similarity Calculation**: Performed by the `PageAnalysisService` (called by the Scheduler task), which uses the TypoScript settings `analyzedFields` and `recencyWeight`.
   - **Frontend Display**: Reads from the DB and filters/limits based on the TypoScript settings `proximityThreshold`, `maxSuggestions`, `excludePages`.
   - **Backend Display**: Reads from the DB (based on the selected `root_page_id`) and filters based on the TypoScript `proximityThreshold`.
 
@@ -169,7 +215,7 @@ These settings are defined directly in the TYPO3 **Scheduler** module interface 
 
   - The `proximityThreshold` (TypoScript) cannot display suggestions with a score lower than the `minimumSimilarity` (Scheduler) because they were not saved. For the TypoScript setting to be effective, it must be ≥ the Scheduler threshold.
   - A page excluded in the Scheduler will never be analyzed/stored. A page excluded *only* in TypoScript will be analyzed/stored (if not excluded in Scheduler) but not displayed. It's often simpler to keep the `excludePages` lists synchronized.
-  - You can create **multiple Scheduler tasks** with different `Start Page IDs` to analyze different sections of the site.
+  - You can create **multiple Scheduler tasks** with different `startPageId` values to analyze different sections of the site.
 
 ## Usage (Frontend)
 
@@ -179,25 +225,17 @@ Integrate the plugin into your Fluid templates to display suggestions:
 <f:cObject typoscriptObjectPath='lib.semantic_suggestion' />
 ```
 
-Ensure the following TypoScript is included in your setup:
+Or include it directly in TypoScript:
 
 ```typoscript
-lib.semantic_suggestion = USER
-lib.semantic_suggestion {
-    userFunc = TYPO3\CMS\Extbase\Core\Bootstrap->run
-    extensionName = SemanticSuggestion // or semantic_suggestion
-    pluginName = Suggestions
-    vendorName = TalanHdf // or your vendor name
-    controller = Suggestions
-    action = list
+# Include on a page
+page.10 =< lib.semantic_suggestion
 
-    settings =< plugin.tx_semanticsuggestion_suggestions.settings
-    persistence =< plugin.tx_semanticsuggestion_suggestions.persistence
-    view =< plugin.tx_semanticsuggestion_suggestions.view
+# Or in a content element
+lib.myContent = COA
+lib.myContent {
+    10 =< lib.semantic_suggestion
 }
-
-# Optional: Include directly on a page or in a content element via TypoScript
-# page.10 =< lib.semantic_suggestion
 ```
 
 The plugin will read relevant suggestions for the current page from the database, applying filters defined in the TypoScript settings (`proximityThreshold`, `maxSuggestions`, `excludePages`).
@@ -210,22 +248,22 @@ A backend module ("Semantic Suggestion" under "Web") allows visualizing the resu
 
 ### Features
 
-  - **Analysis Selection**: Choose which analysis to view (based on the `Start Page ID` / `root_page_id` of executed Scheduler tasks).
+  - **Analysis Selection**: Choose which analysis to view (based on the `startPageId` / `root_page_id` of executed Scheduler tasks).
   - **Detailed Statistics**: Most similar pairs, score distribution, pages with the most links, language statistics.
   - **Configuration Overview**: Reminder of the main parameters used (display threshold, etc.).
-  - **Performance Metrics (Basic)**: Module load time, number of stored pairs for the selected analysis.
+  - **Performance Metrics**: Module load time, number of stored pairs for the selected analysis.
 
 ## Scheduler Task
 
 The **"Semantic Suggestion: Generate Similarities"** task is essential for the extension's operation.
 
   - **Role**: Calculates similarities between pages (using `PageAnalysisService`) and saves relevant results (above the `minimumSimilarity` threshold) to the `tx_semanticsuggestion_similarities` table.
-  - **Configuration**: Set the `Start Page ID`, `Pages to exclude`, and `Minimum similarity threshold` via the Scheduler interface.
+  - **Configuration**: Set the `startPageId`, `excludePages`, and `minimumSimilarity` via the Scheduler interface.
   - **Frequency**: Schedule its execution regularly (e.g., daily, weekly) during off-peak hours to keep suggestions up-to-date without impacting site performance.
 
 ## Similarity Logic (Simplified)
 
-1.  **Execution (Scheduler Task)**: The Scheduler task selects pages to analyze based on its `Start Page ID` and exclusions.
+1.  **Execution (Scheduler Task)**: The Scheduler task selects pages to analyze based on its `startPageId` and exclusions.
 2.  **Analysis (`PageAnalysisService`)**: For each page pair, the service calculates a similarity score based on the content of fields defined in `analyzedFields` (TypoScript), considering their respective weights and stopwords. An adjustment based on recency (`recencyWeight` TypoScript) is applied.
 3.  **Storage (Scheduler Task)**: The task saves pairs whose final score is greater than or equal to the `minimumSimilarity` (Scheduler) to the `tx_semanticsuggestion_similarities` table.
 4.  **Display (Frontend/Backend)**: The modules read scores from the database and apply the `proximityThreshold` (TypoScript) for the final display.
@@ -245,7 +283,7 @@ The extension accounts for TYPO3's multilingual structure. The Scheduler task an
 
 ## Contributing
 
-Contributions are welcome\! Fork the repository, create a branch, make your changes, and submit a Pull Request.
+Contributions are welcome! Fork the repository, create a branch, make your changes, and submit a Pull Request.
 
 ## License
 
@@ -256,5 +294,3 @@ This project is licensed under the GNU General Public License v2.0 or later. See
 **Contact**: Wolfangel Cyril (cyril.wolfangel@gmail.com)
 **Bugs & Features**: [GitHub Issues](https://github.com/friteuseb/semantic_suggestion/issues)
 **Documentation & Updates**: [GitHub Repository](https://github.com/friteuseb/semantic_suggestion)
-
------

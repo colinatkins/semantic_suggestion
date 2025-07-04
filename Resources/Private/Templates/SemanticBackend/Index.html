@@ -1,111 +1,47 @@
-<f:if condition="{showStatistics} && {statistics}">
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h3 class="card-title mb-0">
-                                <core:icon identifier="actions-chart-pie" />
-                                Statistiques générales
-                            </h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                <f:render section="Card" arguments="{
-                                    icon: 'actions-database',
-                                    header: statistics.totalPairs,
-                                    content: 'Paires de similarité<br><small class=\\'text-muted\\'>Stockées au-dessus du seuil</small>',
-                                    colClass: 'col-lg-6 col-md-6'
-                                }" />
-                                <f:render section="Card" arguments="{
-                                    icon: 'apps-pagetree-page-default',
-                                    header: statistics.totalPages,
-                                    content: 'Pages avec similarités<br><small class=\\'text-muted\\'>Ayant au moins une relation</small>',
-                                    colClass: 'col-lg-6 col-md-6'
-                                }" />
-                            </div>
-                        </div>
-                    </div>
-                </f:if>
-
-                <!-- Footer avec informations utiles -->
-                <div class="card border-light">
-                    <div class="card-body bg-light">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6 class="text-muted">
-                                    <core:icon identifier="actions-info" />
-                                    Configuration
-                                </h6>
-                                <small class="text-muted">
-                                    • <strong>Scheduler :</strong> Configure l'analyse (Start Page ID, seuil de stockage)<br>
-                                    • <strong>TypoScript :</strong> Configure l'affichage frontend (seuil d'affichage, nombre max)<br>
-                                    • <strong>Base de données :</strong> Stockage persistant des similarités
-                                </small>
-                            </div>
-                            <div class="col-md-6">
-                                <h6 class="text-muted">
-                                    <core:icon identifier="actions-lightbulb" />
-                                    Conseils
-                                </h6>
-                                <small class="text-muted">
-                                    • Exécutez le Scheduler en heures creuses<br>
-                                    • Seuil Scheduler ≤ Seuil TypoScript<br>
-                                    • Surveillez les performances pour les gros sites
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</f:section>
-
-<f:section name="ProgressBar">
-    <f:variable name="percentage" value="{percentage -> f:format.htmlentitiesDecode()}" />
-    <div class="progress" style="height: 20px;">
-        <div class="progress-bar" role="progressbar" style="width: {percentage}" aria-valuenow="{percentage -> f:format.number(decimals: 0)}" aria-valuemin="0" aria-valuemax="100">
-            {percentage}
-        </div>
-    </div>
-</f:section>
-
-<f:section name="Card">
-    <f:variable name="colClass" value="{colClass}" />
-    <f:if condition="{colClass}">
-        <f:then>
-            <div class="{colClass}">
-        </f:then>
-        <f:else>
-            <div class="col">
-        </f:else>
-    </f:if>
-        <div class="card text-center h-100 border-0 shadow-sm">
-            <div class="card-body d-flex flex-column justify-content-center">
-                <f:if condition="{icon}">
-                    <div class="mb-3">
-                        <core:icon identifier="{icon}" size="large" />
-                    </div>
-                </f:if>
-                <h4 class="card-title text-primary mb-2">{header -> f:format.raw()}</h4>
-                <p class="card-text text-muted small mb-0">{content -> f:format.raw()}</p>
-            </div>
-        </div>
-    </div>
-</f:section>
-
-</html>
-                <html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers" xmlns:core="http://typo3.org/ns/TYPO3/CMS/Core/ViewHelpers" data-namespace-typo3-fluid="true">
+<html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers" xmlns:core="http://typo3.org/ns/TYPO3/CMS/Core/ViewHelpers" data-namespace-typo3-fluid="true">
 
 <f:layout name="Default" />
 
 <f:section name="Content">
     <div class="container-fluid">
-        <h1>Semantic Suggestion - Backend Analysis</h1>
-        
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-4">
+                    <core:icon identifier="content-elements-mailform" size="large" />
+                    Semantic Suggestion - Analyse Backend
+                </h1>
+                
+                <f:if condition="{errorMessage}">
+                    <div class="alert alert-info">
+                        <h4><core:icon identifier="actions-info" /> Aucune analyse disponible</h4>
+                        <p>{errorMessage}</p>
+                        <div class="mt-3">
+                            <p><strong>Configuration requise :</strong></p>
+                            <ol class="mb-3">
+                                <li>Allez dans le module <strong>Système > Scheduler</strong></li>
+                                <li>Créez une nouvelle tâche <strong>"Semantic Suggestion: Generate Similarities"</strong></li>
+                                <li>Configurez les paramètres :
+                                    <ul>
+                                        <li><strong>Start Page ID</strong> : ID de la page racine d'analyse (ex: 1)</li>
+                                        <li><strong>Minimum similarity threshold</strong> : Seuil de stockage (ex: 0.3)</li>
+                                        <li><strong>Pages to exclude</strong> : Pages à exclure (optionnel)</li>
+                                    </ul>
+                                </li>
+                                <li>Programmez l'exécution (quotidienne/hebdomadaire en heures creuses)</li>
+                                <li>Exécutez la tâche une première fois</li>
+                            </ol>
+                            <div class="alert alert-warning">
+                                <strong>Note :</strong> La première exécution peut prendre du temps selon le nombre de pages à analyser.
+                            </div>
+                        </div>
+                    </div>
+                </f:if>
+
                 <f:if condition="{availableAnalyses}">
                     <div class="card mb-4">
                         <div class="card-header">
                             <h3 class="card-title mb-0">
-                                <core:icon identifier="actions-system-options-view" />
+                                <core:icon identifier="actions-system-list-open" />
                                 Sélection de l'analyse
                             </h3>
                         </div>
@@ -137,14 +73,14 @@
                     <div class="card mb-4">
                         <div class="card-header">
                             <h3 class="card-title mb-0">
-                                <core:icon identifier="actions-system-options-view" />
+                                <core:icon identifier="actions-system-list-open" />
                                 Configuration de l'analyse sélectionnée
                             </h3>
                         </div>
                         <div class="card-body">
                             <div class="row g-3">
                                 <f:render section="Card" arguments="{
-                                    icon: 'apps-pagetree-drag-move-into', 
+                                    icon: 'apps-pagetree-root', 
                                     header: currentAnalysis.root_page_id, 
                                     content: 'Start Page ID<br><small class=\\'text-muted\\'>Configuré dans le Scheduler</small>',
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
@@ -162,7 +98,7 @@
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
                                 }" />
                                 <f:render section="Card" arguments="{
-                                    icon: 'actions-insert', 
+                                    icon: 'actions-filter', 
                                     header: '{proximityThreshold -> f:format.number(decimals: 2)}', 
                                     content: 'Seuil d\\'affichage<br><small class=\\'text-muted\\'>Configuré en TypoScript</small>',
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
@@ -170,7 +106,7 @@
                             </div>
                             <div class="row g-3 mt-2">
                                 <f:render section="Card" arguments="{
-                                    icon: 'actions-plus-square', 
+                                    icon: 'actions-add', 
                                     header: maxSuggestions, 
                                     content: 'Max suggestions frontend<br><small class=\\'text-muted\\'>Limite d\\'affichage</small>',
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
@@ -182,8 +118,8 @@
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
                                 }" />
                                 <f:render section="Card" arguments="{
-                                    icon: 'status-status-permission-denied', 
-                                    header: f:if(condition: excludePages, then: 'Oui', else: 'Aucune'), 
+                                    icon: 'status-dialog-blocked', 
+                                    header: '{f:if(condition: excludePages, then: \\'Oui\\', else: \\'Aucune\\')}', 
                                     content: 'Pages exclues (affichage)<br><small class=\\'text-muted\\'>{f:if(condition: excludePages, then: excludePages, else: \\'Aucune exclusion\\')}</small>',
                                     colClass: 'col-lg-6 col-md-8'
                                 }" />
@@ -223,7 +159,7 @@
                     <div class="card mb-4">
                         <div class="card-header">
                             <h3 class="card-title mb-0">
-                                <core:icon identifier="actions-localize" />
+                                <core:icon identifier="flags-multiple" />
                                 Statistiques par langue
                             </h3>
                         </div>
@@ -376,31 +312,63 @@
                     </div>
                 </f:if>
 
-        <f:if condition="{showStatistics} && {statistics}">
-            <div class="panel panel-default bg-light p-3 mb-4">
-                <h3>Statistiques générales</h3>
-                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
-                    <f:render section="Card" arguments="{
-                        icon: 'actions-database',
-                        header: statistics.totalPairs,
-                        content: 'Paires de similarité totales'}"
-                    />
-                    <f:render section="Card" arguments="{
-                        icon: 'apps-pagetree-page-default',
-                        header: statistics.totalPages,
-                        content: 'Pages avec au moins une similarité'}"
-                    />
+                <f:if condition="{showStatistics} && {statistics}">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3 class="card-title mb-0">
+                                <core:icon identifier="actions-chart-pie" />
+                                Statistiques générales
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <f:render section="Card" arguments="{
+                                    icon: 'actions-database',
+                                    header: statistics.totalPairs,
+                                    content: 'Paires de similarité<br><small class=\\'text-muted\\'>Stockées au-dessus du seuil</small>',
+                                    colClass: 'col-lg-6 col-md-6'
+                                }" />
+                                <f:render section="Card" arguments="{
+                                    icon: 'apps-pagetree-page-default',
+                                    header: statistics.totalPages,
+                                    content: 'Pages avec similarités<br><small class=\\'text-muted\\'>Ayant au moins une relation</small>',
+                                    colClass: 'col-lg-6 col-md-6'
+                                }" />
+                            </div>
+                        </div>
+                    </div>
+                </f:if>
+
+                <!-- Footer avec informations utiles -->
+                <div class="card border-light">
+                    <div class="card-body bg-light">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-muted">
+                                    <core:icon identifier="actions-info" />
+                                    Configuration
+                                </h6>
+                                <small class="text-muted">
+                                    • <strong>Scheduler :</strong> Configure l'analyse (Start Page ID, seuil de stockage)<br>
+                                    • <strong>TypoScript :</strong> Configure l'affichage frontend (seuil d'affichage, nombre max)<br>
+                                    • <strong>Base de données :</strong> Stockage persistant des similarités
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-muted">
+                                    <core:icon identifier="actions-lightbulb" />
+                                    Conseils
+                                </h6>
+                                <small class="text-muted">
+                                    • Exécutez le Scheduler en heures creuses<br>
+                                    • Seuil Scheduler ≤ Seuil TypoScript<br>
+                                    • Surveillez les performances pour les gros sites
+                                </small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </f:if>
-    </div>
-</f:section>
-
-<f:section name="ProgressBar">
-    <f:variable name="percentage" value="{percentage -> f:format.htmlentitiesDecode()}" />
-    <div class="progress" style="height: 20px;">
-        <div class="progress-bar" role="progressbar" style="width: {percentage}" aria-valuenow="{percentage -> f:format.number(decimals: 0)}" aria-valuemin="0" aria-valuemax="100">
-            {percentage}
         </div>
     </div>
 </f:section>
@@ -415,13 +383,15 @@
             <div class="col">
         </f:else>
     </f:if>
-        <div class="card text-center h-100">
-            <div class="card-body">
+        <div class="card text-center h-100 border-0 shadow-sm">
+            <div class="card-body d-flex flex-column justify-content-center">
                 <f:if condition="{icon}">
-                    <core:icon identifier="{icon}" size="large" />
+                    <div class="mb-3">
+                        <core:icon identifier="{icon}" size="default" />
+                    </div>
                 </f:if>
-                <h5 class="card-title mt-2">{header -> f:format.raw()}</h5>
-                <p class="card-text">{content -> f:format.raw()}</p>
+                <h4 class="card-title text-primary mb-2">{header -> f:format.raw()}</h4>
+                <p class="card-text text-muted small mb-0">{content -> f:format.raw()}</p>
             </div>
         </div>
     </div>

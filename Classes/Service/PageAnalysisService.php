@@ -212,47 +212,11 @@ class PageAnalysisService implements LoggerAwareInterface
         return $defaultLanguage;
     }
 
-    protected function detectLanguageAutomatically(int $languageId): ?string
-    {
-        try {
-            $currentPageId = $this->getCurrentPageId();
-            if ($currentPageId === null) {
-                $this->logger?->debug('Unable to determine current page ID for language detection - using fallback');
-                
-                // Fallback: essayer de détecter la langue via d'autres moyens
-                // 1. Via les paramètres de langue système
-                if ($languageId === 0) {
-                    return 'en'; // Langue par défaut
-                }
-                
-                // 2. Via Context language aspect
-                try {
-                    $languageAspect = $this->context->getAspect('language');
-                    $locale = $languageAspect->get('locale');
-                    if ($locale && is_string($locale)) {
-                        return strtolower(substr($locale, 0, 2));
-                    }
-                } catch (\Exception $e) {
-                    $this->logger?->debug('Could not get language from Context', ['exception' => $e->getMessage()]);
-                }
-                
-                return null;
-            }
-
-            $currentSite = $this->siteFinder->getSiteByPageId($currentPageId);
-            $siteLanguage = $currentSite->getLanguageById($languageId);
-            if ($siteLanguage) {
-                return strtolower(substr($siteLanguage->getHreflang(), 0, 2));
-            }
-        } catch (\Exception $e) {
-            $this->logger?->debug('Failed to detect language automatically', ['exception' => $e->getMessage()]);
-        }
-        
-        return null;
-    }
-
     protected function getCurrentPageId(): ?int
     {
+        // Vérifier si on est dans un contexte backend/scheduler
+        $isBackendContext = $this->isBackendContext();
+        
         // Méthode 1: Via ServerRequest et PageArguments (frontend)
         $request = $GLOBALS['TYPO3_REQUEST'] ?? null;
         if ($request instanceof ServerRequestInterface) {
@@ -286,7 +250,10 @@ class PageAnalysisService implements LoggerAwareInterface
                 return $pageId;
             }
         } catch (\Exception $e) {
-            $this->logger?->debug('Could not get page ID via Context', ['exception' => $e->getMessage()]);
+            // Ne pas logger cette erreur si on est en contexte backend
+            if (!$isBackendContext) {
+                $this->logger?->debug('Could not get page ID via Context', ['exception' => $e->getMessage()]);
+            }
         }
         
         // Méthode 5: Via $_GET (dernier recours)
@@ -296,18 +263,85 @@ class PageAnalysisService implements LoggerAwareInterface
             return $pageId;
         }
         
-        // Log détaillé pour diagnostic
-        $this->logger?->warning('Unable to determine current page ID', [
-            'has_typo3_request' => isset($GLOBALS['TYPO3_REQUEST']),
-            'has_tsfe' => isset($GLOBALS['TSFE']),
-            'tsfe_id' => $GLOBALS['TSFE']->id ?? 'not_set',
-            'get_id' => $_GET['id'] ?? 'not_set',
-            'request_uri' => $_SERVER['REQUEST_URI'] ?? 'not_set'
-        ]);
+        // Log seulement si ce n'est pas un contexte backend normal
+        if (!$isBackendContext) {
+            $this->logger?->warning('Unable to determine current page ID', [
+                'has_typo3_request' => isset($GLOBALS['TYPO3_REQUEST']),
+                'has_tsfe' => isset($GLOBALS['TSFE']),
+                'tsfe_id' => $GLOBALS['TSFE']->id ?? 'not_set',
+                'get_id' => $_GET['id'] ?? 'not_set',
+                'request_uri' => $_SERVER['REQUEST_URI'] ?? 'not_set'
+            ]);
+        }
         
         return null;
     }
 
+    protected function isBackendContext(): bool
+    {
+        // CLI
+        if (php_sapi_name() === 'cli') {
+            return true;
+        }
+        
+        // Modules backend
+        if (isset($_SERVER['REQUEST_URI']) && 
+            strpos($_SERVER['REQUEST_URI'], '/typo3/module/') !== false) {
+            return true;
+        }
+        
+        // Backend général
+        if (isset($GLOBALS['TYPO3_REQUEST']) && 
+            $GLOBALS['TYPO3_REQUEST']->getAttribute('applicationType') === 'BE') {
+            return true;
+        }
+        
+        return false;
+    }
+
+    protected function detectLanguageAutomatically(int $languageId): ?string
+    {
+        try {
+            $currentPageId = $this->getCurrentPageId();
+            if ($currentPageId === null) {
+                // Ne pas logger comme warning si on est en contexte backend
+                if (!$this->isBackendContext()) {
+                    $this->logger?->debug('Unable to determine current page ID for language detection - using fallback');
+                }
+                
+                // Fallback: essayer de détecter la langue via d'autres moyens
+                if ($languageId === 0) {
+                    return 'en'; // Langue par défaut
+                }
+                
+                // Via Context language aspect
+                try {
+                    $languageAspect = $this->context->getAspect('language');
+                    $locale = $languageAspect->get('locale');
+                    if ($locale && is_string($locale)) {
+                        return strtolower(substr($locale, 0, 2));
+                    }
+                } catch (\Exception $e) {
+                    // Pas de log en contexte backend
+                    if (!$this->isBackendContext()) {
+                        $this->logger?->debug('Could not get language from Context', ['exception' => $e->getMessage()]);
+                    }
+                }
+                
+                return null;
+            }
+
+            $currentSite = $this->siteFinder->getSiteByPageId($currentPageId);
+            $siteLanguage = $currentSite->getLanguageById($languageId);
+            if ($siteLanguage) {
+                return strtolower(substr($siteLanguage->getHreflang(), 0, 2));
+            }
+        } catch (\Exception $e) {
+            $this->logger?->debug('Failed to detect language automatically', ['exception' => $e->getMessage()]);
+        }
+        
+        return null;
+    }
 
     protected function getLanguageFromTypoScript(int $languageId): ?string
     {

@@ -192,26 +192,23 @@ class PageAnalysisService implements LoggerAwareInterface
         $languageAspect = $this->context->getAspect('language');
         $languageId = $languageAspect->getId();
         
-        try {
-            $currentPageId = $this->getCurrentPageId();
-            if ($currentPageId === null) {
-                throw new \RuntimeException('Unable to determine current page ID');
-            }
-    
-            $currentSite = $this->siteFinder->getSiteByPageId($currentPageId);
-            $siteLanguage = $currentSite->getLanguageById($languageId);
-            if ($siteLanguage) {
-                $language = strtolower(substr($siteLanguage->getHreflang(), 0, 2));
-                $this->logDebug('Language detected', ['language' => $language, 'languageId' => $languageId]);
-                return $language;
-            }
-        } catch (\Exception $e) {
-            $this->logger?->warning('Failed to detect language automatically', ['exception' => $e->getMessage()]);
+        // Essayer de détecter automatiquement la langue
+        $detectedLanguage = $this->detectLanguageAutomatically($languageId);
+        if ($detectedLanguage !== null) {
+            $this->logDebug('Language detected automatically', ['language' => $detectedLanguage, 'languageId' => $languageId]);
+            return $detectedLanguage;
         }
-    
-        // Fallback to default language
+        
+        // Fallback vers les paramètres TypoScript
+        $typoscriptLanguage = $this->getLanguageFromTypoScript($languageId);
+        if ($typoscriptLanguage !== null) {
+            $this->logDebug('Language found in TypoScript', ['language' => $typoscriptLanguage, 'languageId' => $languageId]);
+            return $typoscriptLanguage;
+        }
+        
+        // Fallback vers la langue par défaut
         $defaultLanguage = $this->settings['defaultLanguage'] ?? 'en';
-        $this->logDebug('Using fallback language', ['language' => $defaultLanguage]);
+        $this->logDebug('Using fallback language', ['language' => $defaultLanguage, 'languageId' => $languageId]);
         return $defaultLanguage;
     }
 
@@ -220,43 +217,94 @@ class PageAnalysisService implements LoggerAwareInterface
         try {
             $currentPageId = $this->getCurrentPageId();
             if ($currentPageId === null) {
-                $this->logger?->warning('Unable to determine current page ID for language detection');
+                $this->logger?->debug('Unable to determine current page ID for language detection - using fallback');
+                
+                // Fallback: essayer de détecter la langue via d'autres moyens
+                // 1. Via les paramètres de langue système
+                if ($languageId === 0) {
+                    return 'en'; // Langue par défaut
+                }
+                
+                // 2. Via Context language aspect
+                try {
+                    $languageAspect = $this->context->getAspect('language');
+                    $locale = $languageAspect->get('locale');
+                    if ($locale && is_string($locale)) {
+                        return strtolower(substr($locale, 0, 2));
+                    }
+                } catch (\Exception $e) {
+                    $this->logger?->debug('Could not get language from Context', ['exception' => $e->getMessage()]);
+                }
+                
                 return null;
             }
-    
+
             $currentSite = $this->siteFinder->getSiteByPageId($currentPageId);
             $siteLanguage = $currentSite->getLanguageById($languageId);
             if ($siteLanguage) {
                 return strtolower(substr($siteLanguage->getHreflang(), 0, 2));
             }
         } catch (\Exception $e) {
-            $this->logger?->warning('Failed to detect language automatically', ['exception' => $e->getMessage()]);
+            $this->logger?->debug('Failed to detect language automatically', ['exception' => $e->getMessage()]);
         }
+        
         return null;
     }
 
     protected function getCurrentPageId(): ?int
     {
+        // Méthode 1: Via ServerRequest et PageArguments (frontend)
         $request = $GLOBALS['TYPO3_REQUEST'] ?? null;
         if ($request instanceof ServerRequestInterface) {
             $pageArguments = $request->getAttribute('routing');
             if ($pageArguments instanceof PageArguments) {
-                return $pageArguments->getPageId();
+                $pageId = $pageArguments->getPageId();
+                $this->logger?->debug('Page ID found via PageArguments', ['pageId' => $pageId]);
+                return $pageId;
             }
             
-            // Fallback pour le contexte backend
+            // Méthode 2: Via paramètres de requête (backend)
             $pageId = $request->getQueryParams()['id'] ?? null;
             if ($pageId !== null) {
+                $this->logger?->debug('Page ID found via query params', ['pageId' => (int)$pageId]);
                 return (int)$pageId;
             }
         }
         
-        // Fallback pour d'autres contextes
+        // Méthode 3: Via TSFE (frontend fallback)
         if (isset($GLOBALS['TSFE']) && $GLOBALS['TSFE']->id) {
-            return (int)$GLOBALS['TSFE']->id;
+            $pageId = (int)$GLOBALS['TSFE']->id;
+            $this->logger?->debug('Page ID found via TSFE', ['pageId' => $pageId]);
+            return $pageId;
         }
         
-        $this->logger?->warning('Unable to determine current page ID');
+        // Méthode 4: Via Context (nouveau dans TYPO3 v12+)
+        try {
+            $pageId = $this->context->getPropertyFromAspect('page', 'id', 0);
+            if ($pageId > 0) {
+                $this->logger?->debug('Page ID found via Context', ['pageId' => $pageId]);
+                return $pageId;
+            }
+        } catch (\Exception $e) {
+            $this->logger?->debug('Could not get page ID via Context', ['exception' => $e->getMessage()]);
+        }
+        
+        // Méthode 5: Via $_GET (dernier recours)
+        $pageId = (int)($_GET['id'] ?? 0);
+        if ($pageId > 0) {
+            $this->logger?->debug('Page ID found via $_GET', ['pageId' => $pageId]);
+            return $pageId;
+        }
+        
+        // Log détaillé pour diagnostic
+        $this->logger?->warning('Unable to determine current page ID', [
+            'has_typo3_request' => isset($GLOBALS['TYPO3_REQUEST']),
+            'has_tsfe' => isset($GLOBALS['TSFE']),
+            'tsfe_id' => $GLOBALS['TSFE']->id ?? 'not_set',
+            'get_id' => $_GET['id'] ?? 'not_set',
+            'request_uri' => $_SERVER['REQUEST_URI'] ?? 'not_set'
+        ]);
+        
         return null;
     }
 

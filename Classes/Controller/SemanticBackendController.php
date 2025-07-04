@@ -6,7 +6,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Backend\Template\ModuleTemplateFactory;
 use TYPO3\CMS\Core\Log\LogManager;
-use TYPO3\CMS\Extbase\Mvc\Controller\ActionController; // Hériter directement pour v13
+use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Domain\Repository\PageRepository;
 use TYPO3\CMS\Core\Messaging\FlashMessageService;
@@ -15,14 +15,11 @@ use TYPO3\CMS\Core\Database\ConnectionPool;
 use Doctrine\DBAL\ParameterType;
 use TalanHdf\SemanticSuggestion\Service\PageAnalysisService;
 use TalanHdf\SemanticSuggestion\Service\LanguageService;
-use TYPO3\CMS\Core\Messaging\FlashMessage; // Ajout pour addFlashMessage
+use TYPO3\CMS\Core\Messaging\FlashMessage;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
-
 
 class SemanticBackendController extends ActionController
 {
-    // --- PAS de redéclaration de $settings ou $arguments (propriétés héritées) ---
-
     // --- Propriétés pour l'Injection de Dépendances (DI) ---
     protected ModuleTemplateFactory $moduleTemplateFactory;
     protected PageAnalysisService $pageAnalysisService;
@@ -40,7 +37,7 @@ class SemanticBackendController extends ActionController
         LanguageService $languageService,
         FlashMessageService $flashMessageService,
         PageRepository $pageRepository,
-        ConnectionPool $connectionPool = null  // Optionnel au cas où il n'est pas défini dans Services.php
+        ConnectionPool $connectionPool = null
     ) {
         $this->moduleTemplateFactory = $moduleTemplateFactory;
         $this->pageAnalysisService = $pageAnalysisService;
@@ -51,206 +48,311 @@ class SemanticBackendController extends ActionController
         $this->connectionPool = $connectionPool ?? GeneralUtility::makeInstance(ConnectionPool::class);
     }
 
-    
-        /**
-         * @param PageRepository $pageRepository
-         */
-        public function injectPageRepository(PageRepository $pageRepository): void
-        {
-            $this->pageRepository = $pageRepository;
-        }
-
-
-    // --- Action Index (Logique métier principale) ---
-// --- Action Index (Logique métier principale) ---
-public function indexAction(int $rootPageId = null): ResponseInterface
-{
-    // Log facultatif au début
-    if ($this->logger instanceof LoggerInterface &&
-        ($this->pageAnalysisService->getSettings()['debugMode'] ?? false)) {
-        $this->logger->debug('Début de indexAction', ['rootPageId' => $rootPageId]);
+    public function injectPageRepository(PageRepository $pageRepository): void
+    {
+        $this->pageRepository = $pageRepository;
     }
 
-    // Créer le ModuleTemplate
-    $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
+    public function indexAction(int $rootPageId = null): ResponseInterface
+    {
+        $startTime = microtime(true);
+        $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
 
-    try {
-        // Récupérer la configuration TypoScript
-        $fullTypoScript = $this->configurationManager->getConfiguration(
-            ConfigurationManagerInterface::CONFIGURATION_TYPE_FULL_TYPOSCRIPT
-        );
-        $extensionConfig = $fullTypoScript['plugin.']['tx_semanticsuggestion_suggestions.']['settings.'] ?? [];
-        $this->pageAnalysisService->setSettings($extensionConfig); // Mettre à jour les settings du service
+        try {
+            // Récupérer la configuration TypoScript (seulement pour l'affichage)
+            $fullTypoScript = $this->configurationManager->getConfiguration(
+                ConfigurationManagerInterface::CONFIGURATION_TYPE_FULL_TYPOSCRIPT
+            );
+            $extensionConfig = $fullTypoScript['plugin.']['tx_semanticsuggestion_suggestions.']['settings.'] ?? [];
+            
+            // Paramètres d'affichage frontend uniquement
+            $proximityThreshold = (float)($extensionConfig['proximityThreshold'] ?? 0.5);
+            $maxSuggestions = (int)($extensionConfig['maxSuggestions'] ?? 3);
+            $excludePages = GeneralUtility::intExplode(',', $extensionConfig['excludePages'] ?? '', true);
+            $excerptLength = (int)($extensionConfig['excerptLength'] ?? 100);
+            
+            // Paramètres de visibilité du module
+            $showStatistics = (bool)($extensionConfig['showStatistics'] ?? true);
+            $showPerformanceMetrics = (bool)($extensionConfig['showPerformanceMetrics'] ?? true);
+            $showLanguageStatistics = (bool)($extensionConfig['showLanguageStatistics'] ?? true);
+            $showTopSimilarPairs = (bool)($extensionConfig['showTopSimilarPairs'] ?? true);
+            $showDistributionScores = (bool)($extensionConfig['showDistributionScores'] ?? true);
+            $showTopSimilarPages = (bool)($extensionConfig['showTopSimilarPages'] ?? true);
 
-        // Si aucun rootPageId n'est fourni, tenter de le déterminer
-        if ($rootPageId === null) {
-            $defaultRootPageId = (int)($extensionConfig['parentPageId'] ?? 0);
+            // Récupérer toutes les analyses disponibles depuis la base de données
+            $availableAnalyses = $this->getAvailableAnalyses();
+            
+            // Si aucun rootPageId n'est fourni, prendre le premier disponible
+            if ($rootPageId === null && !empty($availableAnalyses)) {
+                $rootPageId = (int)$availableAnalyses[0]['root_page_id'];
+            }
 
-            // Si pas dans TS, chercher le premier root_page_id distinct dans la DB
-            if ($defaultRootPageId === 0) {
-                $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
-                $rootPageIds = $queryBuilder
-                    ->select('root_page_id')
-                    ->from('tx_semanticsuggestion_similarities')
-                    ->groupBy('root_page_id')
-                    ->executeQuery()
-                    ->fetchFirstColumn();
+            // Vérifier si un rootPageId valide a été trouvé
+            if ($rootPageId <= 0 || empty($availableAnalyses)) {
+                $this->addFlashMessage(
+                    'Aucune analyse de similarité trouvée. Veuillez configurer et exécuter la tâche Scheduler "Semantic Suggestion: Generate Similarities".',
+                    'Aucune donnée disponible',
+                    ContextualFeedbackSeverity::INFO
+                );
+                
+                $moduleTemplate->assignMultiple([
+                    'errorMessage' => 'Aucune analyse de similarité trouvée.',
+                    'availableAnalyses' => [],
+                    'showStatistics' => $showStatistics,
+                    'showPerformanceMetrics' => $showPerformanceMetrics,
+                ]);
+                
+                return $moduleTemplate->renderResponse('SemanticBackend/Index');
+            }
 
-                if (!empty($rootPageIds)) {
-                    $defaultRootPageId = (int)$rootPageIds[0];
+            // Récupérer les données d'analyse depuis la base
+            $analysisData = $this->getAnalysisFromDatabase($rootPageId);
+            $statistics = $this->calculateStatistics($analysisData, $proximityThreshold);
+
+            // Informations sur l'analyse sélectionnée
+            $currentAnalysis = null;
+            foreach ($availableAnalyses as $analysis) {
+                if ((int)$analysis['root_page_id'] === $rootPageId) {
+                    $currentAnalysis = $analysis;
+                    break;
                 }
             }
-            $rootPageId = $defaultRootPageId;
-        }
 
-        // Vérifier si un rootPageId valide a été trouvé ou fourni
-        if ($rootPageId <= 0) {
+            // Calculer les métriques de performance
+            $executionTime = microtime(true) - $startTime;
+            $performanceMetrics = [
+                'executionTime' => $executionTime,
+                'storedSimilarities' => $this->getStoredSimilaritiesCount($rootPageId),
+            ];
+
+            // Récupérer les langues du site (pour les statistiques de langue)
+            $siteLanguages = [];
+            try {
+                $siteLanguages = $this->languageService->getSiteLanguages($rootPageId);
+            } catch (\Exception $e) {
+                $this->logger->warning('No site configuration found for page ID ' . $rootPageId);
+            }
+
+            // Statistiques de langue basées sur les pages dans les résultats
+            $pageIdsInResults = array_keys($analysisData['results'] ?? []);
+            $languageStatistics = [];
+            if (!empty($pageIdsInResults) && !empty($siteLanguages)) {
+                $pagesForLangStats = $this->pageRepository->getMenuForPages($pageIdsInResults, 'uid, sys_language_uid');
+                $languageStatistics = $this->languageService->getLanguageStatistics($pagesForLangStats, $siteLanguages);
+            }
+
+            // Assigner les variables à la vue
+            $moduleTemplate->assignMultiple([
+                // Configuration d'affichage (TypoScript)
+                'proximityThreshold' => $proximityThreshold,
+                'maxSuggestions' => $maxSuggestions,
+                'excludePages' => implode(', ', $excludePages),
+                'excerptLength' => $excerptLength,
+
+                // Informations sur l'analyse Scheduler actuelle
+                'currentRootPageId' => $rootPageId,
+                'currentAnalysis' => $currentAnalysis,
+                'availableAnalyses' => $availableAnalyses,
+
+                // Visibilité des sections
+                'showStatistics' => $showStatistics,
+                'showPerformanceMetrics' => $showPerformanceMetrics,
+                'showLanguageStatistics' => $showLanguageStatistics,
+                'showTopSimilarPairs' => $showTopSimilarPairs,
+                'showDistributionScores' => $showDistributionScores,
+                'showTopSimilarPages' => $showTopSimilarPages,
+
+                // Données d'analyse
+                'performanceMetrics' => $showPerformanceMetrics ? $performanceMetrics : null,
+                'statistics' => $showStatistics ? $statistics : null,
+                'analysisResults' => $analysisData['results'] ?? [],
+                'languageStatistics' => $showLanguageStatistics ? ($languageStatistics['statistics'] ?? []) : null,
+                'totalValidatedPages' => count($pageIdsInResults),
+            ]);
+
+            return $moduleTemplate->renderResponse('SemanticBackend/Index');
+
+        } catch (\Exception $e) {
+            $this->logger->error('Error in indexAction', [
+                'exception' => $e->getMessage(), 
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             $this->addFlashMessage(
-                'Aucune analyse de similarité trouvée ou configurée. Veuillez configurer l\'extension et exécuter la tâche scheduler correspondante.',
-                'Aucune donnée disponible',
-                ContextualFeedbackSeverity::INFO // Utiliser l'Enum ici
+                'Une erreur est survenue lors du chargement du module. Consultez les logs.',
+                'Erreur',
+                ContextualFeedbackSeverity::ERROR
             );
-             // ATTENTION: ModuleTemplate n'a pas de setContent. Retourner directement si erreur.
-            // Il faudrait idéalement assigner une variable d'erreur à la vue.
-            // Pour l'instant, on peut juste rendre sans données principales.
-            $moduleTemplate->assign('errorMessage', 'Aucune analyse de similarité trouvée ou configurée.');
-            return $moduleTemplate->renderResponse(); // Retourner tôt
+
+            $moduleTemplate->assign('errorMessage', 'Erreur lors du chargement du module.');
+            return $moduleTemplate->renderResponse('SemanticBackend/Index');
         }
+    }
 
-        // Récupérer les analyses disponibles pour le sélecteur
-        $queryBuilderAnalyses = GeneralUtility::makeInstance(ConnectionPool::class)
-            ->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
-
-        $availableAnalyses = $queryBuilderAnalyses
+    /**
+     * Récupère toutes les analyses disponibles dans la base de données
+     */
+    protected function getAvailableAnalyses(): array
+    {
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
+        
+        $analyses = $queryBuilder
             ->select('root_page_id')
             ->addSelectLiteral('COUNT(DISTINCT page_id) as page_count')
             ->addSelectLiteral('COUNT(*) as pair_count')
             ->from('tx_semanticsuggestion_similarities')
             ->groupBy('root_page_id')
+            ->orderBy('root_page_id', 'ASC')
             ->executeQuery()
             ->fetchAllAssociative();
 
-        // Enrichir avec le titre de la page racine
-        foreach ($availableAnalyses as &$analysis) {
-            $pageRecord = $this->pageRepository->getPage((int)$analysis['root_page_id']);
-            $analysis['title'] = $pageRecord['title'] ?? 'ID: ' . $analysis['root_page_id'];
-        }
-        unset($analysis); // Important après une boucle foreach avec référence
-
-        // Récupérer les données pour l'analyse sélectionnée depuis la DB
-        // Note: getAnalysisFromDatabase utilise getAnalysisFromDatabaseDetailed
-        // qui calcule déjà les 'statistics'.
-        $analysisData = $this->getAnalysisFromDatabase($rootPageId);
-
-        // Assigner toutes les données nécessaires à la vue Fluid
-        $moduleTemplate->assignMultiple([
-            'currentRootPageId' => $rootPageId,
-            'availableAnalyses' => $availableAnalyses,
-            'parentPageId' => $rootPageId, // ou $extensionConfig['parentPageId'] selon la logique voulue
-            'proximityThreshold' => (float)($extensionConfig['proximityThreshold'] ?? 0.5),
-            'maxSuggestions' => (int)($extensionConfig['maxSuggestions'] ?? 5),
-            'excludePages' => $extensionConfig['excludePages'] ?? '',
-            'analysisResults' => $analysisData['results'] ?? [],
-            'statistics' => $analysisData['statistics'] ?? [], // <-- Utilise les statistiques pré-calculées
-            'showStatistics' => true, // Ou basé sur $extensionConfig['showStatistics']
-            'showPerformanceMetrics' => true, // etc.
-            'showLanguageStatistics' => true,
-            'showTopSimilarPairs' => true,
-            'showDistributionScores' => true,
-            'showTopSimilarPages' => true,
-            // Ajouter d'autres variables si nécessaire (ex: performanceMetrics, languageStatistics calculés ici)
-        ]);
-
-    } catch (\Exception $e) {
-        // Gérer les erreurs potentielles lors de la récupération/traitement des données
-        $this->logger->error('Error in indexAction', ['exception' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-        $this->addFlashMessage(
-            'Une erreur est survenue lors du traitement des données: ' . $e->getMessage(),
-            'Erreur',
-            ContextualFeedbackSeverity::ERROR // Utiliser l'Enum ici
-        );
-         // Assigner un message d'erreur à la vue en cas d'exception
-         $moduleTemplate->assign('errorMessage', 'Une erreur est survenue lors du traitement des données: ' . $e->getMessage());
-    }
-
-    // --- SUPPRIMER LE BLOC SUIVANT ---
-    /*
-    try {
-        $content = $this->view->render(); // Inutile de rendre manuellement ici
-        $moduleTemplate->setContent($content); // Erreur: Méthode inexistante
-    } catch (\Exception $e) {
-        $this->logger->error('Error rendering view', ['exception' => $e->getMessage()]);
-        $this->addFlashMessage(
-            'Une erreur est survenue lors du rendu de la vue: ' . $e->getMessage(),
-            'Erreur de rendu',
-            ContextualFeedbackSeverity::ERROR
-        );
-         // Si le rendu échoue dans renderResponse, TYPO3 le gère souvent.
-         // On peut assigner un message d'erreur si besoin.
-         // $moduleTemplate->assign('renderError', 'Erreur de rendu: ' . $e->getMessage());
-         // $moduleTemplate->setContent('Une erreur est survenue lors du rendu de la vue.'); // Inexistant
-    }
-    */
-    // --- FIN DE LA SUPPRESSION ---
-
-    // Rendre la réponse complète (layout + contenu de la vue Fluid)
-    // Si une exception a eu lieu avant, $errorMessage sera affiché par la vue.
-    return $moduleTemplate->renderResponse('SemanticBackend/Index');
-}
-
-
-    private function getAnalysisFromDatabase(int $rootPageId): array
-        {
-            // Valeurs par défaut
-            $proximityThreshold = 0.5;
-            $excludePages = [];
-            $currentLanguageUid = 0; // Utilisez une valeur par défaut ou un service pour obtenir la langue courante
-            
-            return $this->getAnalysisFromDatabaseDetailed($rootPageId, 1, $proximityThreshold, $excludePages, $currentLanguageUid);
+        // Enrichir avec les informations des pages
+        foreach ($analyses as &$analysis) {
+            $pageInfo = $this->pageRepository->getPage((int)$analysis['root_page_id']);
+            $analysis['title'] = $pageInfo['title'] ?? 'Page ' . $analysis['root_page_id'];
         }
 
+        return $analyses;
+    }
 
-    // --- Méthodes Utilitaires (Identiques à Legacy) ---
-
-    protected function getAnalysisFromDatabaseDetailed(int $parentPageId, int $depth, float $proximityThreshold, array $excludePages, int $currentLanguageUid): array
+    /**
+     * Récupère les données d'analyse depuis la base de données
+     */
+    protected function getAnalysisFromDatabase(int $rootPageId): array
     {
-        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class) ->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
+        
         $similarities = $queryBuilder
-            ->select('page_id', 'similar_page_id', 'similarity_score', 'root_page_id', 'sys_language_uid')
-            ->from('tx_semanticsuggestion_similarities') ->where(
-                $queryBuilder->expr()->eq('root_page_id', $queryBuilder->createNamedParameter($parentPageId, ParameterType::INTEGER)),
-                $queryBuilder->expr()->eq('sys_language_uid', $queryBuilder->createNamedParameter($currentLanguageUid, ParameterType::INTEGER)),
-                $queryBuilder->expr()->gte('similarity_score', $queryBuilder->createNamedParameter($proximityThreshold, ParameterType::STRING))
-            )->executeQuery()->fetchAllAssociative();
-        $analysisResults = []; $pageIds = [];
+            ->select('page_id', 'similar_page_id', 'similarity_score', 'sys_language_uid')
+            ->from('tx_semanticsuggestion_similarities')
+            ->where(
+                $queryBuilder->expr()->eq('root_page_id', $queryBuilder->createNamedParameter($rootPageId, ParameterType::INTEGER))
+            )
+            ->executeQuery()
+            ->fetchAllAssociative();
+
+        $analysisResults = [];
+        $pageIds = [];
+
+        // Construire les résultats d'analyse
         foreach ($similarities as $similarity) {
-            $pageId = (int)$similarity['page_id']; $similarPageId = (int)$similarity['similar_page_id'];
-            $pageIds[] = $pageId; $pageIds[] = $similarPageId;
-            if (!isset($analysisResults[$pageId])) { $analysisResults[$pageId] = ['uid' => $pageId, 'similarities' => [], 'sys_language_uid' => (int)$similarity['sys_language_uid']]; }
-            if (!in_array($similarPageId, $excludePages)) { $analysisResults[$pageId]['similarities'][$similarPageId] = ['score' => (float)$similarity['similarity_score'], 'relevance' => $this->determineRelevanceLevel((float)$similarity['similarity_score'])]; }
+            $pageId = (int)$similarity['page_id'];
+            $similarPageId = (int)$similarity['similar_page_id'];
+            
+            $pageIds[] = $pageId;
+            $pageIds[] = $similarPageId;
+
+            if (!isset($analysisResults[$pageId])) {
+                $analysisResults[$pageId] = [
+                    'uid' => $pageId,
+                    'similarities' => [],
+                    'sys_language_uid' => (int)$similarity['sys_language_uid']
+                ];
+            }
+
+            $analysisResults[$pageId]['similarities'][$similarPageId] = [
+                'score' => (float)$similarity['similarity_score'],
+                'relevance' => $this->determineRelevanceLevel((float)$similarity['similarity_score'])
+            ];
         }
-        $pageIds = array_unique($pageIds); $pageDataRecords = [];
+
+        // Récupérer les informations des pages
+        $pageIds = array_unique($pageIds);
+        $pageDataRecords = [];
+        
         if (!empty($pageIds)) {
-            $pageDataRecords = $this->getPageRepository()->getMenuForPages($pageIds, 'uid, title', 'sorting', 'AND hidden=0 AND deleted=0');
-            foreach ($analysisResults as $pageId => &$data) { $data['title'] = ['content' => $pageDataRecords[$pageId]['title'] ?? '[Page #' . $pageId . ']']; } unset($data);
-            foreach ($pageIds as $pageId) { if (!isset($analysisResults[$pageId]) && isset($pageDataRecords[$pageId])) { $analysisResults[$pageId] = ['uid' => $pageId, 'title' => ['content' => $pageDataRecords[$pageId]['title'] ?? ''], 'similarities' => [], 'sys_language_uid' => $currentLanguageUid]; } }
+            $pageDataRecords = $this->pageRepository->getMenuForPages($pageIds, 'uid, title');
+            
+            foreach ($analysisResults as $pageId => &$data) {
+                $data['title'] = [
+                    'content' => $pageDataRecords[$pageId]['title'] ?? 'Page ' . $pageId
+                ];
+            }
         }
-        $statistics = $this->calculateStatisticsFromDbResults($analysisResults);
-        return ['results' => $analysisResults, 'statistics' => $statistics, 'metrics' => ['totalPages' => count($pageIds)]];
+
+        return ['results' => $analysisResults];
     }
 
-    protected function mergeLanguageData(array $data): array { $firstKey = array_key_first($data); return $firstKey !== null ? $data[$firstKey] : ['results' => [], 'statistics' => [], 'metrics' => ['totalPages' => 0]]; }
-    protected function calculateStatisticsFromDbResults(array $analysisResults): array { $stats = ['topSimilarPairs' => [], 'distributionScores' => [], 'topSimilarPages' => []]; $allPairs = []; $pageSimilarityCounts = []; $scoreRanges = ['0.0-0.2'=>0, '0.2-0.4'=>0, '0.4-0.6'=>0, '0.6-0.8'=>0, '0.8-1.0'=>0]; foreach ($analysisResults as $pageId => $data) { $pageSimilarityCounts[$pageId] = 0; foreach ($data['similarities'] as $similarPageId => $similarity) { $score = $similarity['score']; $allPairs[] = ['page1'=>$pageId, 'page2'=>$similarPageId, 'score'=>$score]; $pageSimilarityCounts[$pageId]++; if($score <= 0.2) $scoreRanges['0.0-0.2']++; elseif($score <= 0.4) $scoreRanges['0.2-0.4']++; elseif($score <= 0.6) $scoreRanges['0.4-0.6']++; elseif($score <= 0.8) $scoreRanges['0.6-0.8']++; else $scoreRanges['0.8-1.0']++; } } usort($allPairs, fn($a, $b)=>$b['score']<=>$a['score']); $uniquePairs = []; $displayedPairKeys = []; foreach($allPairs as $pair){ $key = min($pair['page1'], $pair['page2']).'-'.max($pair['page1'], $pair['page2']); if(!isset($displayedPairKeys[$key])){ $uniquePairs[] = $pair; $displayedPairKeys[$key] = true; } } $stats['topSimilarPairs'] = array_slice($uniquePairs, 0, 5); $stats['distributionScores'] = $scoreRanges; arsort($pageSimilarityCounts); $stats['topSimilarPages'] = array_slice($pageSimilarityCounts, 0, 5, true); return $stats; }
-    protected function getPageRepository(): PageRepository { if ($this->pageRepository === null) { $this->pageRepository = GeneralUtility::makeInstance(PageRepository::class); } return $this->pageRepository; }
-    protected function determineRelevanceLevel(float $similarityScore): string { if ($similarityScore > 0.7) return 'High'; elseif ($similarityScore > 0.4) return 'Medium'; else return 'Low'; }
-    public function addFlashMessage(
-        string $messageBody, string $messageTitle = '',
-        ContextualFeedbackSeverity $severity = ContextualFeedbackSeverity::INFO,
-        bool $storeInSession = false
-   ): void {
-        $flashMessage = GeneralUtility::makeInstance(FlashMessage::class, $messageBody, $messageTitle, $severity, $storeInSession);
-        $this->flashMessageService->getMessageQueueByIdentifier('core.template.flashMessages')->enqueue($flashMessage);
-   }
+    /**
+     * Calcule les statistiques d'analyse
+     */
+    protected function calculateStatistics(array $analysisData, float $proximityThreshold): array
+    {
+        $results = $analysisData['results'] ?? [];
+        $allPairs = [];
+        $pagesSimilarityCount = [];
 
-   
-} 
+        foreach ($results as $pageId => $pageData) {
+            $similarities = $pageData['similarities'] ?? [];
+            $pagesSimilarityCount[$pageId] = 0;
+
+            foreach ($similarities as $similarPageId => $similarityData) {
+                $score = $similarityData['score'];
+                
+                if ($score >= $proximityThreshold) {
+                    $pagesSimilarityCount[$pageId]++;
+                    
+                    // Éviter les doublons dans les paires
+                    $pairKey = min($pageId, $similarPageId) . '-' . max($pageId, $similarPageId);
+                    if (!isset($allPairs[$pairKey])) {
+                        $allPairs[$pairKey] = [
+                            'page1' => $pageId,
+                            'page2' => $similarPageId,
+                            'score' => $score
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Trier les paires par score décroissant
+        usort($allPairs, function($a, $b) {
+            return $b['score'] <=> $a['score'];
+        });
+
+        // Trier les pages par nombre de similarités décroissant
+        arsort($pagesSimilarityCount);
+
+        return [
+            'topSimilarPairs' => array_slice($allPairs, 0, 5),
+            'topSimilarPages' => array_slice($pagesSimilarityCount, 0, 5, true),
+            'totalPairs' => count($allPairs),
+            'totalPages' => count($results)
+        ];
+    }
+
+    /**
+     * Compte le nombre de similarités stockées pour une analyse
+     */
+    protected function getStoredSimilaritiesCount(int $rootPageId): int
+    {
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
+        
+        return (int)$queryBuilder
+            ->count('*')
+            ->from('tx_semanticsuggestion_similarities')
+            ->where(
+                $queryBuilder->expr()->eq('root_page_id', $queryBuilder->createNamedParameter($rootPageId, ParameterType::INTEGER))
+            )
+            ->executeQuery()
+            ->fetchOne();
+    }
+
+    /**
+     * Détermine le niveau de pertinence basé sur le score
+     */
+    protected function determineRelevanceLevel(float $score): string
+    {
+        if ($score >= 0.8) return 'high';
+        if ($score >= 0.6) return 'medium';
+        return 'low';
+    }
+
+    /**
+     * Récupère le repository des pages
+     */
+    protected function getPageRepository(): PageRepository
+    {
+        return $this->pageRepository;
+    }
+}

@@ -2,7 +2,6 @@
 plugin.tx_semanticsuggestion_suggestions {
     view {
         # Template root paths
-        # Override these paths in your site package to customize templates
         templateRootPaths {
             0 = EXT:semantic_suggestion/Resources/Private/Templates/
             1 = {$plugin.tx_semanticsuggestion_suggestions.view.templateRootPath}
@@ -20,48 +19,29 @@ plugin.tx_semanticsuggestion_suggestions {
     }
 
     # Persistence configuration
-    # Uncomment and set if you need to store plugin-related records
     persistence {
         storagePid = {$plugin.tx_semanticsuggestion_suggestions.persistence.storagePid}
     }
     
     # Main settings for the Semantic Suggestion functionality
     settings {
-        # ID of the parent page from which to start the analysis
-        parentPageId = {$plugin.tx_semanticsuggestion_suggestions.settings.parentPageId}
-        # Threshold for considering pages as similar (0.0 to 1.0)
+        # Frontend Display Settings
         proximityThreshold = {$plugin.tx_semanticsuggestion_suggestions.settings.proximityThreshold}
-        # Maximum number of suggestions to display
         maxSuggestions = {$plugin.tx_semanticsuggestion_suggestions.settings.maxSuggestions}
-        # Depth of recursion in the page tree (0 = only direct children)
-        recursive = {$plugin.tx_semanticsuggestion_suggestions.settings.recursive}
-        # Comma-separated list of page UIDs to exclude from suggestions
         excludePages = {$plugin.tx_semanticsuggestion_suggestions.settings.excludePages}
-        # Length of the text excerpt for each suggestion
         excerptLength = {$plugin.tx_semanticsuggestion_suggestions.settings.excerptLength}
-        # Weight for recency in similarity calculation
-        recencyWeight = {$plugin.tx_semanticsuggestion_suggestions.settings.recencyWeight}
-        # Enable or disable the display of general statistics
-        showStatistics = {$plugin.tx_semanticsuggestion_suggestions.showStatistics}
-        # Enable or disable the display of performance metrics
+        debugMode = {$plugin.tx_semanticsuggestion_suggestions.settings.debugMode}
+
+        # Backend Module Display Settings
+        showStatistics = {$plugin.tx_semanticsuggestion_suggestions.settings.showStatistics}
         showPerformanceMetrics = {$plugin.tx_semanticsuggestion_suggestions.settings.showPerformanceMetrics}
-        # Enable or disable the display of language statistics
         showLanguageStatistics = {$plugin.tx_semanticsuggestion_suggestions.settings.showLanguageStatistics}
-        # Enable or disable the calculation of content distribution
-        calculateDistribution = {$plugin.tx_semanticsuggestion_suggestions.settings.calculateDistribution}
-        # Enable or disable the calculation of top similar page pairs
-        calculateTopSimilarPairs = {$plugin.tx_semanticsuggestion_suggestions.settings.calculateTopSimilarPairs}
-        # Enable or disable the display of top similar page pairs
         showTopSimilarPairs = {$plugin.tx_semanticsuggestion_suggestions.settings.showTopSimilarPairs}
-        # Enable or disable the display of distribution scores
         showDistributionScores = {$plugin.tx_semanticsuggestion_suggestions.settings.showDistributionScores}
-        # Enable or disable the display of top similar pages
         showTopSimilarPages = {$plugin.tx_semanticsuggestion_suggestions.settings.showTopSimilarPages}
-        # Enable or disable the debug mode to log more events in public/typo3temp/logs/semantic_suggestion_debug.log
-        debugMode = 0
 
-
-        # Weights for different page fields in similarity calculation
+        # Analysis Algorithm Settings (used by Scheduler task)
+        recencyWeight = {$plugin.tx_semanticsuggestion_suggestions.settings.recencyWeight}
         analyzedFields {
             title = {$plugin.tx_semanticsuggestion_suggestions.settings.analyzedFields.title}
             description = {$plugin.tx_semanticsuggestion_suggestions.settings.analyzedFields.description}
@@ -72,57 +52,29 @@ plugin.tx_semanticsuggestion_suggestions {
     }
 }
 
-
-plugin.tx_semanticsuggestion_suggestions {
-    settings {
-        languageMapping {
-            0 = en
-            1 = fr
-            2 = de
-            # Ajoutez d'autres mappings selon vos besoins
-        }
-        defaultLanguage = en
-    }
-}
-
-
-# Configuration to include the plugin in content elements
-# This allows you to include the semantic suggestion functionality
-# in any content element by referencing `lib.semantic_suggestion`
-# Usage: <f:cObject typoscriptObjectPath="lib.semantic_suggestion" />
-
-# Configuration of the lib.semantic_suggestion
-# This block defines a TypoScript object that can be reused throughout the site
+# Reusable TypoScript object for frontend display
 lib.semantic_suggestion = USER
 lib.semantic_suggestion {
     # Specifies the user function that should be called to execute the plugin
     userFunc = TYPO3\CMS\Extbase\Core\Bootstrap->run
 
     # Specifies the name of the extension, the plugin, and the vendor
-    # This tells TYPO3 which extension and plugin to use
     extensionName = SemanticSuggestion
     pluginName = Suggestions
-    vendorName = Talan
+    vendorName = TalanHdf
 
     # Inherit the view configuration from the plugin setup
-    # This includes paths to templates, partials, and layouts
     view =< plugin.tx_semanticsuggestion_suggestions.view
 
     # Inherit the persistence configuration from the plugin setup
-    # This includes settings related to database storage
     persistence =< plugin.tx_semanticsuggestion_suggestions.persistence
 
     # Inherit the settings configuration from the plugin setup
-    # This includes custom settings like parentPageId, proximityThreshold, etc.
     settings =< plugin.tx_semanticsuggestion_suggestions.settings
 }
 
-# Configuration to include the plugin in content elements
-# This maps the TypoScript path `tt_content.list.20.semanticsuggestion_suggestions`
-# to the plugin configuration `plugin.tx_semanticsuggestion_suggestions`
-# This allows the plugin to be used as a content element
+# Integration as content element
 tt_content.list.20.semanticsuggestion_suggestions =< plugin.tx_semanticsuggestion_suggestions
-
 
 # Backend module configuration
 module.tx_semanticsuggestion {
@@ -134,8 +86,7 @@ module.tx_semanticsuggestion {
         partialRootPaths {
             0 = EXT:semantic_suggestion/Resources/Private/Partials/
             1 = {$module.tx_semanticsuggestion.view.partialRootPath}
-            20 = EXT:semantic_suggestion_nlp/Resources/Private/Partials/
-       }
+        }
         layoutRootPaths {
             0 = EXT:semantic_suggestion/Resources/Private/Layouts/
             1 = {$module.tx_semanticsuggestion.view.layoutRootPath}
@@ -144,5 +95,4 @@ module.tx_semanticsuggestion {
     # Custom CSS for the backend module
     _CSS_DEFAULT_STYLE >
     _CSS_DEFAULT_STYLE = <link rel="stylesheet" type="text/css" href="EXT:semantic_suggestion/Resources/Public/Css/SemanticSuggestion.css" media="all">
-
 }

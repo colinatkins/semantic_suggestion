@@ -1,115 +1,107 @@
 # CUSTOM SUBCATEGORIES
-# customsubcategory=100=General Settings
-# customsubcategory=110=Module Activation Settings
-# customsubcategory=120=Weights for Similarity Calculation
-# customsubcategory=130=Frontend View Configuration
-# customsubcategory=140=Backend View Configuration
+# customsubcategory=100=Frontend Display Settings
+# customsubcategory=110=Backend Module Display Settings
+# customsubcategory=120=Analysis Algorithm Settings
 
 plugin.tx_semanticsuggestion_suggestions {
-    # General Settings
+    # Frontend Display Settings
     settings {
-        # cat=semantic_suggestion:general/100/001; type=int+; label=Parent Page ID
-        # The ID of the parent page from which the analysis starts. This is the root page for content suggestions.
-        parentPageId = 1
-
-        # cat=semantic_suggestion:general/100/002; type=float; label=Proximity Threshold
-        # Minimum similarity score (0.0 to 1.0) for considering pages as related. Higher values mean stricter matching.
+        # cat=semantic_suggestion:Frontend Display/100/001; type=float; label=Proximity Threshold
+        # Minimum similarity score (0.0 to 1.0) for displaying suggestions. Must be >= Scheduler minimumSimilarity.
         proximityThreshold = 0.5
 
-        # cat=semantic_suggestion:general/100/003; type=int+; label=Maximum Suggestions
+        # cat=semantic_suggestion:Frontend Display/100/002; type=int+; label=Maximum Suggestions
         # The maximum number of similar pages to display in the suggestions list.
         maxSuggestions = 3
 
-        # cat=semantic_suggestion:general/100/004; type=int+; label=Recursive Depth
-        # How deep the search should go in the page tree (0 = only direct children).
-        recursive = 1
-
-        # cat=semantic_suggestion:general/100/005; type=string; label=Exclude Pages
-        # Comma-separated list of page UIDs to exclude from the suggestions.
+        # cat=semantic_suggestion:Frontend Display/100/003; type=string; label=Exclude Pages (Display)
+        # Comma-separated list of page UIDs to exclude from DISPLAY only (not from analysis).
         excludePages = 
 
-        # cat=semantic_suggestion:general/100/006; type=int+; label=Excerpt Length
+        # cat=semantic_suggestion:Frontend Display/100/004; type=int+; label=Excerpt Length
         # Number of characters to show in the text excerpt of each suggestion.
         excerptLength = 100
 
-        # cat=semantic_suggestion:general/100/007; type=float; label=Recency Weight
-        # Importance of the page's recency in similarity calculation (0.0 to 1.0). Higher values give more weight to newer content.
-        recencyWeight = 0.2
+        # cat=semantic_suggestion:Frontend Display/100/005; type=boolean; label=Debug Mode
+        # Enable debug logs in typo3temp/logs/semantic_suggestion.log (0 or 1).
+        debugMode = 0
     }
 
+    # Backend Module Display Settings
+    settings {
+        # cat=semantic_suggestion:Backend Module/110/001; type=boolean; label=Show Statistics
+        # Display general statistics in the backend module.
+        showStatistics = 1
 
-                                                      
-     # Module Activation Settings                                                                            
-     settings {                                                                                      
-         # cat=semantic_suggestion:Module Activation/110/001; type=boolean; label=Enable NLP Analysis - NOT implemented at the moment -
-         enableNlpAnalysis = 0                                                                       
-                                                                                                     
-         # cat=semantic_suggestion:Module Activation/110/002; type=boolean; label=Show Statistics             
-         showStatistics = 1                                                                          
-                                                                                                     
-         # cat=semantic_suggestion:Module Activation/110/003; type=boolean; label=Show Performance Metrics    
-         showPerformanceMetrics = 1                                                                  
-                                                                                                     
-         # cat=semantic_suggestion:Module Activation/110/004; type=boolean; label=Show Language Statistics    
-         showLanguageStatistics = 1                                                                  
-                                                                                                     
-         # cat=semantic_suggestion:Module Activation/110/005; type=boolean; label=Calculate Distribution      
-         calculateDistribution = 1                                                                   
-                                                                                                     
-         # cat=semantic_suggestion:Module Activation/110/006; type=boolean; label=Calculate Top Similar Pairs 
-         calculateTopSimilarPairs = 1                                                                
-                                                                                                     
-         # cat=semantic_suggestion:Module Activation/110/007; type=boolean; label=Show Top Similar Pairs      
-         showTopSimilarPairs = 1                                                                     
-                                                                                                     
-         # cat=semantic_suggestion:Module Activation/110/008; type=boolean; label=Show Distribution Scores    
-         showDistributionScores = 1                                                                  
-                                                                                                     
-         # cat=semantic_suggestion:Module Activation/110/009; type=boolean; label=Show Top Similar Pages      
-         showTopSimilarPages = 1                                                                     
-     }  
+        # cat=semantic_suggestion:Backend Module/110/002; type=boolean; label=Show Performance Metrics
+        # Display performance metrics (load time, stored pairs count) in the backend module.
+        showPerformanceMetrics = 1
 
+        # cat=semantic_suggestion:Backend Module/110/003; type=boolean; label=Show Language Statistics
+        # Display language distribution statistics in the backend module.
+        showLanguageStatistics = 1
 
-    # Weights for Similarity Calculation
-    settings.analyzedFields {
-        # cat=semantic_suggestion:weights/120/001; type=float; label=Title Weight
-        # Importance of the page title in the similarity calculation. Higher values give more weight to the title.
-        title = 1.5
+        # cat=semantic_suggestion:Backend Module/110/004; type=boolean; label=Show Top Similar Pairs
+        # Display the top 5 most similar page pairs in the backend module.
+        showTopSimilarPairs = 1
 
-        # cat=semantic_suggestion:weights/120/002; type=float; label=Description Weight
-        # Importance of the page description in the similarity calculation. Higher values give more weight to the description.
-        description = 1.0
+        # cat=semantic_suggestion:Backend Module/110/005; type=boolean; label=Show Distribution Scores
+        # Display similarity score distribution in the backend module.
+        showDistributionScores = 1
 
-        # cat=semantic_suggestion:weights/120/003; type=float; label=Keywords Weight
-        # Importance of the page keywords in the similarity calculation. Higher values give more weight to the keywords.
-        keywords = 2.0
+        # cat=semantic_suggestion:Backend Module/110/006; type=boolean; label=Show Top Similar Pages
+        # Display pages with the most similarities in the backend module.
+        showTopSimilarPages = 1
+    }
 
-        # cat=semantic_suggestion:weights/120/004; type=float; label=Abstract Weight
-        # Importance of the page abstract in the similarity calculation. Higher values give more weight to the abstract.
-        abstract = 1.2
+    # Analysis Algorithm Settings (Used by Scheduler Task)
+    settings {
+        # cat=semantic_suggestion:Analysis Algorithm/120/001; type=float; label=Recency Weight
+        # Importance of page recency in similarity calculation (0.0 to 1.0). Higher values favor newer content.
+        recencyWeight = 0.2
 
-        # cat=semantic_suggestion:weights/120/005; type=float; label=Content Weight
-        # Importance of the main page content in the similarity calculation. Higher values give more weight to the content.
-        content = 1.0
+        # Fields analyzed and their weights in similarity calculation
+        analyzedFields {
+            # cat=semantic_suggestion:Analysis Algorithm/120/002; type=float; label=Title Weight
+            # Importance of the page title in similarity calculation.
+            title = 1.5
+
+            # cat=semantic_suggestion:Analysis Algorithm/120/003; type=float; label=Description Weight
+            # Importance of the page description in similarity calculation.
+            description = 1.0
+
+            # cat=semantic_suggestion:Analysis Algorithm/120/004; type=float; label=Keywords Weight
+            # Importance of the page keywords in similarity calculation.
+            keywords = 2.0
+
+            # cat=semantic_suggestion:Analysis Algorithm/120/005; type=float; label=Abstract Weight
+            # Importance of the page abstract in similarity calculation.
+            abstract = 1.2
+
+            # cat=semantic_suggestion:Analysis Algorithm/120/006; type=float; label=Content Weight
+            # Importance of the main page content in similarity calculation.
+            content = 1.0
+        }
     }
 
     # Frontend View Configuration
     view {
-        # cat=semantic_suggestion:frontend/130/001; type=string; label=Template Root Path (FE)
+        # cat=semantic_suggestion:Frontend View/130/001; type=string; label=Template Root Path (FE)
         # Path to the root template files for the frontend.
         templateRootPath = EXT:semantic_suggestion/Resources/Private/Templates/
 
-        # cat=semantic_suggestion:frontend/130/002; type=string; label=Partial Root Path (FE)
+        # cat=semantic_suggestion:Frontend View/130/002; type=string; label=Partial Root Path (FE)
         # Path to the partial template files for the frontend.
         partialRootPath = EXT:semantic_suggestion/Resources/Private/Partials/
 
-        # cat=semantic_suggestion:frontend/130/003; type=string; label=Layout Root Path (FE)
+        # cat=semantic_suggestion:Frontend View/130/003; type=string; label=Layout Root Path (FE)
         # Path to the layout template files for the frontend.
         layoutRootPath = EXT:semantic_suggestion/Resources/Private/Layouts/
     }
+
     persistence {
-        # cat=semantic_suggestion:frontend/130/004; type=string; label=Default Storage PID
-        # The default storage PID where plugin-related records are stored.
+        # cat=semantic_suggestion:Frontend View/130/004; type=string; label=Default Storage PID
+        # The default storage PID where plugin-related records are stored (if needed).
         storagePid =
     }
 }
@@ -117,16 +109,16 @@ plugin.tx_semanticsuggestion_suggestions {
 # Backend View Configuration
 module.tx_semanticsuggestion {
     view {
-        # cat=semantic_suggestion:backend/140/001; type=string; label=Template Root Path (BE)
+        # cat=semantic_suggestion:Backend View/140/001; type=string; label=Template Root Path (BE)
         # Path to the root template files for the backend module.
-        templateRootPath = EXT:semantic_suggestion/Resources/Private/Backend/Templates/
+        templateRootPath = EXT:semantic_suggestion/Resources/Private/Templates/
 
-        # cat=semantic_suggestion:backend/140/002; type=string; label=Partial Root Path (BE)
+        # cat=semantic_suggestion:Backend View/140/002; type=string; label=Partial Root Path (BE)
         # Path to the partial template files for the backend module.
-        partialRootPath = EXT:semantic_suggestion/Resources/Private/Backend/Partials/
+        partialRootPath = EXT:semantic_suggestion/Resources/Private/Partials/
 
-        # cat=semantic_suggestion:backend/140/003; type=string; label=Layout Root Path (BE)
+        # cat=semantic_suggestion:Backend View/140/003; type=string; label=Layout Root Path (BE)
         # Path to the layout template files for the backend module.
-        layoutRootPath = EXT:semantic_suggestion/Resources/Private/Backend/Layouts/
+        layoutRootPath = EXT:semantic_suggestion/Resources/Private/Layouts/
     }
 }

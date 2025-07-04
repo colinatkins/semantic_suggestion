@@ -7,7 +7,7 @@
         <div class="row">
             <div class="col-12">
                 <h1 class="mb-4">
-                    <core:icon identifier="module-semantic-suggestion" size="large" />
+                    <core:icon identifier="content-elements-mailform" size="large" />
                     Semantic Suggestion - Analyse Backend (v12)
                 </h1>
                 
@@ -41,7 +41,7 @@
                     <div class="card mb-4">
                         <div class="card-header">
                             <h3 class="card-title mb-0">
-                                <core:icon identifier="actions-system-options-view" />
+                                <core:icon identifier="actions-system-list-open" />
                                 Sélection de l'analyse
                             </h3>
                         </div>
@@ -73,14 +73,14 @@
                     <div class="card mb-4">
                         <div class="card-header">
                             <h3 class="card-title mb-0">
-                                <core:icon identifier="actions-system-options-view" />
+                                <core:icon identifier="actions-system-list-open" />
                                 Configuration de l'analyse sélectionnée
                             </h3>
                         </div>
                         <div class="card-body">
                             <div class="row g-3">
                                 <f:render section="Card" arguments="{
-                                    icon: 'apps-pagetree-drag-move-into', 
+                                    icon: 'apps-pagetree-root', 
                                     header: currentAnalysis.root_page_id, 
                                     content: 'Start Page ID<br><small class=\\'text-muted\\'>Configuré dans le Scheduler</small>',
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
@@ -98,7 +98,7 @@
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
                                 }" />
                                 <f:render section="Card" arguments="{
-                                    icon: 'actions-insert', 
+                                    icon: 'actions-filter', 
                                     header: '{proximityThreshold -> f:format.number(decimals: 2)}', 
                                     content: 'Seuil d\\'affichage<br><small class=\\'text-muted\\'>Configuré en TypoScript</small>',
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
@@ -106,7 +106,7 @@
                             </div>
                             <div class="row g-3 mt-2">
                                 <f:render section="Card" arguments="{
-                                    icon: 'actions-plus-square', 
+                                    icon: 'actions-add', 
                                     header: maxSuggestions, 
                                     content: 'Max suggestions frontend<br><small class=\\'text-muted\\'>Limite d\\'affichage</small>',
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
@@ -118,7 +118,7 @@
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
                                 }" />
                                 <f:render section="Card" arguments="{
-                                    icon: 'status-status-permission-denied', 
+                                    icon: 'status-dialog-blocked', 
                                     header: '{f:if(condition: excludePages, then: \\'Oui\\', else: \\'Aucune\\')}', 
                                     content: 'Pages exclues (affichage)<br><small class=\\'text-muted\\'>{f:if(condition: excludePages, then: excludePages, else: \\'Aucune exclusion\\')}</small>',
                                     colClass: 'col-lg-6 col-md-8'
@@ -159,7 +159,7 @@
                     <div class="card mb-4">
                         <div class="card-header">
                             <h3 class="card-title mb-0">
-                                <core:icon identifier="actions-localize" />
+                                <core:icon identifier="flags-multiple" />
                                 Statistiques par langue
                             </h3>
                         </div>
@@ -387,7 +387,7 @@
             <div class="card-body d-flex flex-column justify-content-center">
                 <f:if condition="{icon}">
                     <div class="mb-3">
-                        <core:icon identifier="{icon}" size="large" />
+                        <core:icon identifier="{icon}" size="default" />
                     </div>
                 </f:if>
                 <h4 class="card-title text-primary mb-2">{header -> f:format.raw()}</h4>

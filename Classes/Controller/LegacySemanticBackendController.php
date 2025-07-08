@@ -56,7 +56,10 @@ class LegacySemanticBackendController extends ActionController
         $this->logDebug('Début de indexAction (Legacy Controller)');
         $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
         $startTime = microtime(true);
-        $moduleTemplate->getPageRenderer()->addCssInlineBlock(
+
+        // 🎯 Masquer le pagetree avec CSS pour TYPO3 v12
+        $pageRenderer = GeneralUtility::makeInstance(\TYPO3\CMS\Core\Page\PageRenderer::class);
+        $pageRenderer->addCssInlineBlock(
             'hide-pagetree-v12',
             '
             .scaffold-content-navigation,

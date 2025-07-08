@@ -56,7 +56,32 @@ class LegacySemanticBackendController extends ActionController
         $this->logDebug('Début de indexAction (Legacy Controller)');
         $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
         $startTime = microtime(true);
-
+        $moduleTemplate->getPageRenderer()->addCssInlineBlock(
+            'hide-pagetree-v12',
+            '
+            .scaffold-content-navigation,
+            .scaffold-content-navigation-component,
+            .module-docheader-bar-navigation,
+            .typo3-module-navigation,
+            .navigation-component-frame,
+            .scaffold-content-navigation-expanded,
+            .module-navigation {
+                display: none !important;
+            }
+            .scaffold-content-module,
+            .module-body,
+            .scaffold-content-module-wrapper {
+                margin-left: 0 !important;
+                width: 100% !important;
+            }
+            .module-docheader {
+                margin-left: 0 !important;
+            }
+            .scaffold {
+                grid-template-columns: 1fr !important;
+            }
+            '
+        );
         try {
             // Récupérer la configuration via le service PageAnalysisService
             $extensionConfig = $this->pageAnalysisService->getSettings();

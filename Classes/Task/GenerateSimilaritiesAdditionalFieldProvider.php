@@ -56,6 +56,35 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
             'cshLabel' => $fieldId
         ];
         
+        // NOUVEAU : Champ pour recursiveExclusion
+        if (!isset($taskInfo['recursiveExclusion'])) {
+            if ($task instanceof GenerateSimilaritiesTask) {
+                $taskInfo['recursiveExclusion'] = $task->recursiveExclusion;
+            } else {
+                $taskInfo['recursiveExclusion'] = true; // Par défaut : récursif
+            }
+        }
+        
+        $fieldId = 'task_recursiveExclusion';
+        $checked = $taskInfo['recursiveExclusion'] ? 'checked="checked"' : '';
+        $fieldCode = '<div class="form-check">
+            <input type="checkbox" class="form-check-input" name="tx_scheduler[recursiveExclusion]" id="' . $fieldId . '" value="1" ' . $checked . ' />
+            <label class="form-check-label" for="' . $fieldId . '">
+                Exclure récursivement les sous-pages
+            </label>
+        </div>
+        <small class="form-text text-muted">
+            Si coché : exclure la page ET toutes ses sous-pages<br>
+            Si décoché : exclure seulement la page, mais analyser ses sous-pages
+        </small>';
+        
+        $additionalFields[$fieldId] = [
+            'code' => $fieldCode,
+            'label' => 'Exclusion récursive',
+            'cshKey' => '_MOD_system_txschedulerM1',
+            'cshLabel' => $fieldId
+        ];
+        
         // Champ pour minimumSimilarity
         if (!isset($taskInfo['minimumSimilarity'])) {
             if ($task instanceof GenerateSimilaritiesTask) {
@@ -118,6 +147,9 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
             }
         }
         
+        // Validation de recursiveExclusion : pas de validation spécifique nécessaire
+        // car c'est un booléen géré par la checkbox
+        
         return $result;
     }
     
@@ -130,6 +162,8 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
             $task->startPageId = (int)$submittedData['startPageId'];
             $task->excludePages = $submittedData['excludePages'];
             $task->minimumSimilarity = (float)$submittedData['minimumSimilarity'];
+            // Gestion de la checkbox : si pas présente dans $_POST, elle est décochée
+            $task->recursiveExclusion = isset($submittedData['recursiveExclusion']) && $submittedData['recursiveExclusion'] === '1';
         }
     }
     

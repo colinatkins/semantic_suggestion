@@ -36,6 +36,12 @@ class GenerateSimilaritiesTask extends AbstractTask
      */
     public $minimumSimilarity = 0.5;
     
+    /**
+     * Détermine si l'exclusion est récursive ou non
+     * @var bool
+     */
+    public $recursiveExclusion = true;
+    
     protected ?LoggerInterface $logger = null;
     protected ?PageAnalysisService $pageAnalysisService = null;
     protected ?ConnectionPool $connectionPool = null;
@@ -70,7 +76,8 @@ class GenerateSimilaritiesTask extends AbstractTask
             $this->initializeDependencies();
             $this->logger->info('Starting similarity generation task', [
                 'startPageId' => $this->startPageId,
-                'minimumSimilarity' => $this->minimumSimilarity
+                'minimumSimilarity' => $this->minimumSimilarity,
+                'recursiveExclusion' => $this->recursiveExclusion
             ]);
 
             // Convertir la liste de pages exclues en tableau
@@ -139,11 +146,21 @@ class GenerateSimilaritiesTask extends AbstractTask
             );
             
             foreach ($pages as $page) {
-                // Ignorer les pages exclues
-                if (in_array($page['uid'], $excludePages)) {
+                // Vérifier si la page est exclue
+                $isExcluded = in_array($page['uid'], $excludePages);
+                
+                if ($isExcluded) {
+                    // Si l'exclusion n'est pas récursive, on continue quand même 
+                    // pour analyser les sous-pages
+                    if (!$this->recursiveExclusion && $depth > 1) {
+                        $subPages = $this->getPages($page['uid'], $depth - 1, $languageId, $excludePages);
+                        $allPages = array_merge($allPages, $subPages);
+                    }
+                    // Dans tous les cas, on ignore la page courante
                     continue;
                 }
                 
+                // Ajouter la page si elle n'est pas exclue
                 $allPages[$page['uid']] = $page;
                 $allPages[$page['uid']]['sys_language_uid'] = $languageId;
                 

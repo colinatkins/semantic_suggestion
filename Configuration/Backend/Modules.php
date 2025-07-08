@@ -17,9 +17,8 @@ if ($isV13OrGreater) {
     $controllerActions[LegacySemanticBackendController::class] = ['index']; // Utilisez le contrôleur v12
 }
 
-// Retourner la définition du module
-// Cette définition sera maintenant lue par v12 ET v13
-return [
+// Configuration de base du module
+$moduleConfig = [
     'web_SemanticSuggestion' => [
         'parent' => 'web',
         'position' => ['after' => 'web_info'], // Ou une autre position si vous préférez
@@ -45,4 +44,15 @@ return [
         ],
     ],
 ];
-?>
+
+// 🎯 AJOUT : Configuration spécifique par version pour masquer le pagetree
+if ($isV13OrGreater) {
+    // TYPO3 v13+ : Nouvelle méthode propre
+    $moduleConfig['web_SemanticSuggestion']['inheritNavigationComponentFromMainModule'] = false;
+} else {
+    // TYPO3 v12 : Ancienne méthode
+    $moduleConfig['web_SemanticSuggestion']['navigationComponent'] = '';
+    $moduleConfig['web_SemanticSuggestion']['navigationComponentId'] = '';
+}
+
+return $moduleConfig;

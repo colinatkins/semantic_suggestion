@@ -46,10 +46,20 @@
                             </h3>
                         </div>
                         <div class="card-body">
-                            <form action="{f:uri.action(controller: 'LegacySemanticBackend', action: 'index')}" method="get" class="row g-3">
+                            <form action="" method="get" class="row g-3">
+                                <!-- Préserver les paramètres existants du module -->
+                                <input type="hidden" name="M" value="web_SemanticSuggestion" />
+                                <f:if condition="{moduleToken}">
+                                    <input type="hidden" name="moduleToken" value="{moduleToken}" />
+                                </f:if>
+                                <f:if condition="{token}">
+                                    <input type="hidden" name="token" value="{token}" />
+                                </f:if>
+                                
                                 <div class="col-md-10">
                                     <label for="rootPageId" class="form-label">Analyse Scheduler disponible</label>
-                                    <select name="rootPageId" id="rootPageId" class="form-select" onchange="this.form.submit()">
+                                    <!-- 🎯 UTILISER 'id' au lieu de 'rootPageId' -->
+                                    <select name="id" id="rootPageId" class="form-select" onchange="this.form.submit()">
                                         <f:for each="{availableAnalyses}" as="analysis">
                                             <option value="{analysis.root_page_id}" {f:if(condition: '{analysis.root_page_id} == {currentRootPageId}', then: 'selected')}>
                                                 {analysis.title} | {analysis.page_count} pages analysées | {analysis.pair_count} paires stockées | Start Page ID: {analysis.root_page_id}
@@ -67,7 +77,11 @@
                             </form>
                         </div>
                     </div>
-                </f:if>
+                </div>
+            </f:if>
+
+
+
 
                 <f:if condition="{showStatistics} && {currentAnalysis}">
                     <div class="card mb-4">
@@ -397,4 +411,12 @@
     </div>
 </f:section>
 
+<script>
+document.getElementById('rootPageId').addEventListener('change', function() {
+    const selectedValue = this.value;
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('rootPageId', selectedValue);
+    window.location.href = currentUrl.toString();
+});
+</script>
 </html>

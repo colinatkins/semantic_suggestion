@@ -51,11 +51,34 @@ class LegacySemanticBackendController extends ActionController
     }
 
     // --- Action Index (Logique métier principale) ---
-    public function indexAction(int $rootPageId = null): ResponseInterface
+    public function indexAction(): ResponseInterface
     {
+        // Récupérer le rootPageId depuis les paramètres de la requête
+        $rootPageId = null;
+        $queryParams = $this->request->getQueryParams();
+        
+        if (isset($queryParams['rootPageId']) && is_numeric($queryParams['rootPageId'])) {
+            $rootPageId = (int)$queryParams['rootPageId'];
+        }
+        
+        // Fallback
+        if ($rootPageId === null && isset($_GET['rootPageId'])) {
+            $rootPageId = (int)$_GET['rootPageId'];
+        }
+        
+        $this->logDebug('Retrieved rootPageId from request', [
+            'rootPageId' => $rootPageId,
+            'GET' => $_GET
+        ]);
+        
         $this->logDebug('Début de indexAction (Legacy Controller)');
         $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
         $startTime = microtime(true);
+
+        // 🔍 DEBUG : Ajouter ces lignes pour diagnostiquer
+        $this->logDebug('Received rootPageId parameter', ['rootPageId' => $rootPageId]);
+        $this->logDebug('GET parameters', ['GET' => $_GET]);
+        $this->logDebug('Request parameters', ['params' => $this->request->getQueryParams()]);
 
         // 🎯 Masquer le pagetree avec CSS pour TYPO3 v12
         $pageRenderer = GeneralUtility::makeInstance(\TYPO3\CMS\Core\Page\PageRenderer::class);

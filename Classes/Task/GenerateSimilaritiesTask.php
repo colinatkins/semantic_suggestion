@@ -195,8 +195,14 @@ class GenerateSimilaritiesTask extends AbstractTask
             
             $this->logger->info('Using threshold for filtering', ['threshold' => $proximityThreshold]);
             
-            foreach ($analysisData['results'] as $pageId => $pageData) {
-                foreach ($pageData['similarities'] as $similarPageId => $similarity) {
+        foreach ($analysisData['results'] as $pageId => $pageData) {
+            // Vérifier que 'similarities' existe et est un tableau
+            if (!isset($pageData['similarities']) || !is_array($pageData['similarities'])) {
+                $this->logger->warning('No similarities found for page', ['pageId' => $pageId]);
+                continue;
+            }
+            
+            foreach ($pageData['similarities'] as $similarPageId => $similarity) {
                     // Ne stocker que les similarités au-dessus du seuil
                     if ($similarity['score'] >= $proximityThreshold) {
                         $bulkInserts[] = [

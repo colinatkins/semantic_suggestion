@@ -16,6 +16,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Changelog for Semantic Suggestion Extension
 
+
+## [2.1.1] - 2025-01-08
+
+### Added
+- Optional recursive exclusion for scheduler task pages
+- New checkbox in scheduler configuration to control recursive exclusion behavior
+- Improved backend module selector for multiple scheduler tasks
+
+###  Fixed  
+- Backend module selector now properly switches between different scheduler task analyses
+- Parameter handling in TYPO3 v12 backend module
+- Root page ID parameter persistence when changing analyses
+
+###  Improved
+- Better user control over page exclusion in scheduler tasks
+- Enhanced multi-site support with proper task isolation
+- More intuitive backend interface for analysis selection
+
+###  Documentation
+- Updated configuration examples for recursive exclusion
+- Added troubleshooting guide for multi-task setups
+
+
 ## [2.1.0] - 2025-07-04
 
 ### 🚀 Added

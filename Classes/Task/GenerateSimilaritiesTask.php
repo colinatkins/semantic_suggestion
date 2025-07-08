@@ -151,9 +151,11 @@ class GenerateSimilaritiesTask extends AbstractTask
                 
                 if ($isExcluded) {
                     // Si l'exclusion n'est pas récursive, on continue quand même 
-                    // pour analyser les sous-pages
+                    // pour analyser les sous-pages SANS les exclure
                     if (!$this->recursiveExclusion && $depth > 1) {
-                        $subPages = $this->getPages($page['uid'], $depth - 1, $languageId, $excludePages);
+                        // IMPORTANT : On ne passe pas $excludePages pour les sous-pages
+                        // car on veut seulement exclure la page courante, pas ses enfants
+                        $subPages = $this->getPages($page['uid'], $depth - 1, $languageId, []);
                         $allPages = array_merge($allPages, $subPages);
                     }
                     // Dans tous les cas, on ignore la page courante
@@ -166,6 +168,7 @@ class GenerateSimilaritiesTask extends AbstractTask
                 
                 // Descendre récursivement si la profondeur le permet
                 if ($depth > 1) {
+                    // Pour les pages non-exclues, on continue avec la liste complète des exclusions
                     $subPages = $this->getPages($page['uid'], $depth - 1, $languageId, $excludePages);
                     $allPages = array_merge($allPages, $subPages);
                 }
@@ -182,6 +185,7 @@ class GenerateSimilaritiesTask extends AbstractTask
             return $allPages;
         }
     }
+
 
     /**
      * Sauvegarde les résultats d'analyse en base de données

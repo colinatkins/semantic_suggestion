@@ -296,4 +296,33 @@ class GenerateSimilaritiesTask extends AbstractTask
             ['page_id', 'similar_page_id', 'similarity_score', 'root_page_id', 'sys_language_uid', 'crdate', 'tstamp']
         );
     }
+
+    /**
+     * Retourne des informations supplémentaires à afficher dans la liste des tâches du scheduler
+     */
+    public function getAdditionalInformation(): string
+    {
+        $info = [];
+        
+        // Ajouter l'ID de la page de départ
+        $info[] = '📄 Page de départ: ' . $this->startPageId;
+        
+        // Ajouter les pages exclues si définies
+        if (!empty($this->excludePages)) {
+            $excludeList = GeneralUtility::trimExplode(',', $this->excludePages, true);
+            $info[] = '🚫 Pages exclues: ' . implode(', ', $excludeList) . ' (' . count($excludeList) . ')';
+        } else {
+            $info[] = '🚫 Pages exclues: aucune';
+        }
+        
+        // Ajouter l'exclusion récursive
+        $recursiveIcon = $this->recursiveExclusion ? '🔄' : '📄';
+        $recursiveText = $this->recursiveExclusion ? 'Récursive' : 'Page seule';
+        $info[] = $recursiveIcon . ' Exclusion: ' . $recursiveText;
+        
+        // Ajouter le seuil de similarité
+        $info[] = '📊 Seuil minimum: ' . number_format($this->minimumSimilarity, 2);
+        
+        return implode(' | ', $info);
+    }
 }

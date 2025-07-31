@@ -27,10 +27,10 @@ return function (ContainerConfigurator $configurator, ContainerBuilder $containe
     $services->set(TalanHdf\SemanticSuggestion\Controller\SuggestionsController::class)->public(true);
     $services->set(TalanHdf\SemanticSuggestion\Task\GenerateSimilaritiesTask::class)->public(true);
     $services->set(TalanHdf\SemanticSuggestion\Command\DiagnosticCommand::class)
-        ->addTag('console.command', ['command' => 'semantic:diagnostic']);
+        ->tag('console.command', ['command' => 'semantic:diagnostic']);
 
     $services->set(TalanHdf\SemanticSuggestion\Service\PageAnalysisService::class)->public(true);
-    $services->set(TalanHdf\SemanticSuggestion\Service\SuggestionService::class);
+    $services->set(TalanHdf\SemanticSuggestion\Service\SuggestionService::class)->public(true);
     $services->set(TalanHdf\SemanticSuggestion\Service\UtilityService::class);
     $services->set(TalanHdf\SemanticSuggestion\Service\LanguageService::class);
     $services->set(TalanHdf\SemanticSuggestion\Service\StopWordsService::class);

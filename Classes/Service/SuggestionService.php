@@ -306,6 +306,17 @@ class SuggestionService
                 $this->utility->logDebug('Page not found', ['pageId' => $similarPageId]);
                 continue;
             }
+            
+            // Vérifier que la page suggérée est bien dans la même langue
+            $pageLang = (int)($pageData['sys_language_uid'] ?? 0);
+            if ($pageLang !== $currentLanguageUid) {
+                $this->utility->logDebug('Page excluded due to language mismatch', [
+                    'pageId' => $similarPageId,
+                    'pageLang' => $pageLang,
+                    'currentLang' => $currentLanguageUid
+                ]);
+                continue;
+            }
 
             $excerpt = $this->prepareExcerpt($pageData, $excerptLength);
             $pageData['media'] = $this->getPageMedia($similarPageId);

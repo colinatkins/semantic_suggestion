@@ -65,7 +65,7 @@ plugin.tx_semanticsuggestion_suggestions {
         proximityThreshold = 0.15
         
         # Debug temporaire pour diagnostiquer l'allemand
-        debugMode = 1
+        debugMode = 0
     }
 }
 

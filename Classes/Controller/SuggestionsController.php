@@ -54,7 +54,23 @@ class SuggestionsController extends ActionController implements LoggerAwareInter
         }
 
         $currentLanguageUid = $this->utility->getCurrentLanguageUid(); // Assurez-vous que UtilityService fonctionne
+        
+        // Log détaillé pour debug
+        $this->utility->logDebug('SuggestionsController - Getting suggestions', [
+            'currentPageId' => $currentPageId,
+            'currentLanguageUid' => $currentLanguageUid,
+            'currentPage' => $currentPage,
+            'itemsPerPage' => $itemsPerPage
+        ]);
+        
         $viewData = $this->suggestionService->generateSuggestionsFromDatabase($currentPageId, $currentPage, $itemsPerPage);
+
+        // Log les données retournées
+        $this->utility->logDebug('SuggestionsController - View data prepared', [
+            'suggestionsCount' => count($viewData['suggestions'] ?? []),
+            'currentPageTitle' => $viewData['currentPageTitle'] ?? 'N/A',
+            'pagination' => $viewData['pagination'] ?? 'N/A'
+        ]);
 
         // Ajouter les logs de debug aux données de la vue si nécessaire
         $viewData['debugLogs'] = $this->utility->getDebugLogs();

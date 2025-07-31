@@ -19,6 +19,9 @@ use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Core\Context\LanguageAspect;
 use Psr\Log\NullLogger;
+use Cywolf\NlpTools\Service\LanguageDetectionService;
+use Cywolf\NlpTools\Service\TextAnalysisService;
+use Cywolf\NlpTools\Service\TextVectorizerService;
 
 class PageAnalysisService implements LoggerAwareInterface
 {
@@ -33,12 +36,18 @@ class PageAnalysisService implements LoggerAwareInterface
     protected StopWordsService $stopWordsService;
     protected SiteFinder $siteFinder;
     protected FrontendInterface $cache;
+    protected LanguageDetectionService $languageDetector;
+    protected TextAnalysisService $textAnalyzer;
+    protected TextVectorizerService $textVectorizer;
 
     public function __construct(
         Context $context,
         ConfigurationManagerInterface $configurationManager,
         StopWordsService $stopWordsService,
         SiteFinder $siteFinder,
+        LanguageDetectionService $languageDetector,
+        TextAnalysisService $textAnalyzer,
+        TextVectorizerService $textVectorizer,
         ?CacheManager $cacheManager = null,
         ?ConnectionPool $connectionPool = null,
         ?LoggerInterface $logger = null
@@ -47,6 +56,9 @@ class PageAnalysisService implements LoggerAwareInterface
         $this->configurationManager = $configurationManager;
         $this->stopWordsService = $stopWordsService;
         $this->siteFinder = $siteFinder;
+        $this->languageDetector = $languageDetector;
+        $this->textAnalyzer = $textAnalyzer;
+        $this->textVectorizer = $textVectorizer;
         $this->cacheManager = $cacheManager;
         $this->connectionPool = $connectionPool ?? GeneralUtility::makeInstance(ConnectionPool::class);
         $this->logger = $logger ?? new NullLogger();
@@ -189,27 +201,25 @@ class PageAnalysisService implements LoggerAwareInterface
     
     protected function getCurrentLanguage(): string
     {
-        $languageAspect = $this->context->getAspect('language');
-        $languageId = $languageAspect->getId();
-        
-        // Essayer de détecter automatiquement la langue
-        $detectedLanguage = $this->detectLanguageAutomatically($languageId);
-        if ($detectedLanguage !== null) {
-            $this->logDebug('Language detected automatically', ['language' => $detectedLanguage, 'languageId' => $languageId]);
+        // Utiliser le service de détection intelligent de nlp_tools
+        try {
+            $detectedLanguage = $this->languageDetector->detectLanguage('');
+            $this->logDebug('Language detected via nlp_tools', ['language' => $detectedLanguage]);
             return $detectedLanguage;
+        } catch (\Exception $e) {
+            $this->logError('Error detecting language via nlp_tools', ['exception' => $e->getMessage()]);
+            
+            // Fallback vers l'ancienne méthode
+            $languageAspect = $this->context->getAspect('language');
+            $languageId = $languageAspect->getId();
+            
+            $typoscriptLanguage = $this->getLanguageFromTypoScript($languageId);
+            if ($typoscriptLanguage !== null) {
+                return $typoscriptLanguage;
+            }
+            
+            return $this->settings['defaultLanguage'] ?? 'en';
         }
-        
-        // Fallback vers les paramètres TypoScript
-        $typoscriptLanguage = $this->getLanguageFromTypoScript($languageId);
-        if ($typoscriptLanguage !== null) {
-            $this->logDebug('Language found in TypoScript', ['language' => $typoscriptLanguage, 'languageId' => $languageId]);
-            return $typoscriptLanguage;
-        }
-        
-        // Fallback vers la langue par défaut
-        $defaultLanguage = $this->settings['defaultLanguage'] ?? 'en';
-        $this->logDebug('Using fallback language', ['language' => $defaultLanguage, 'languageId' => $languageId]);
-        return $defaultLanguage;
     }
 
     protected function getCurrentPageId(): ?int
@@ -552,11 +562,27 @@ class PageAnalysisService implements LoggerAwareInterface
             }
     
             if (!empty($originalContent) && is_string($originalContent)) {
-
                 
-                $processedContent = $this->stopWordsService->removeStopWords($originalContent, $language);
+                // Utiliser le service TextAnalysisService de nlp_tools pour un traitement avancé
+                try {
+                    $processedContent = $this->textAnalyzer->removeStopWords($originalContent, $language);
+                    
+                    // Optionnel: appliquer le stemming pour de meilleurs résultats
+                    if ($this->settings['enableStemming'] ?? true) {
+                        $stemmedWords = $this->textAnalyzer->stem($processedContent, $language);
+                        $processedContent = implode(' ', $stemmedWords);
+                    }
+                } catch (\Exception $e) {
+                    $this->logError('Error processing text with nlp_tools', [
+                        'field' => $field,
+                        'pageId' => $page['uid'],
+                        'exception' => $e->getMessage()
+                    ]);
+                    
+                    // Fallback vers l'ancien service
+                    $processedContent = $this->stopWordsService->removeStopWords($originalContent, $language);
+                }
 
-                
                 $preparedData[$field] = [
                     'content' => $processedContent,
                     'weight' => (float)$weight
@@ -721,16 +747,106 @@ private function getAllSubpages(int $parentId, int $depth = 0): array
 
     private function calculateSimilarity(array $page1, array $page2): array
     {
+        try {
+            // Préparer les textes pour l'analyse TF-IDF
+            $text1 = $this->prepareTextForAnalysis($page1);
+            $text2 = $this->prepareTextForAnalysis($page2);
+            
+            if (empty($text1) || empty($text2)) {
+                $this->logger?->warning('One or both pages have no text content', [
+                    'page1' => $page1['uid'] ?? 'unknown',
+                    'page2' => $page2['uid'] ?? 'unknown'
+                ]);
+                return [
+                    'semanticSimilarity' => 0.0,
+                    'recencyBoost' => 0.0,
+                    'finalSimilarity' => 0.0
+                ];
+            }
 
-    
+            // Détecter la langue du contenu
+            $language = $this->languageDetector->detectLanguage($text1);
+            
+            // Créer les vecteurs TF-IDF
+            $tfidfResult = $this->textVectorizer->createTfIdfVectors([$text1, $text2], $language);
+            
+            if (empty($tfidfResult['vectors']) || count($tfidfResult['vectors']) < 2) {
+                $this->logger?->warning('Failed to create TF-IDF vectors', [
+                    'page1' => $page1['uid'] ?? 'unknown',
+                    'page2' => $page2['uid'] ?? 'unknown'
+                ]);
+                return [
+                    'semanticSimilarity' => 0.0,
+                    'recencyBoost' => 0.0,
+                    'finalSimilarity' => 0.0
+                ];
+            }
+            
+            // Calculer la similarité cosinus avec les vecteurs TF-IDF
+            $vector1 = $tfidfResult['vectors'][0];
+            $vector2 = $tfidfResult['vectors'][1];
+            $semanticSimilarity = $this->textVectorizer->cosineSimilarity($vector1, $vector2);
+            
+            // Calculer le boost de récence
+            $recencyBoost = $this->calculateRecencyBoost($page1, $page2);
+            $recencyWeight = $this->settings['recencyWeight'] ?? 0.2;
+            
+            // Combinaison finale avec pondération
+            $finalSimilarity = ($semanticSimilarity * (1 - $recencyWeight)) + ($recencyBoost * $recencyWeight);
+            
+            $this->logDebug('TF-IDF similarity calculated', [
+                'page1' => $page1['uid'] ?? 'unknown',
+                'page2' => $page2['uid'] ?? 'unknown',
+                'language' => $language,
+                'semanticSimilarity' => $semanticSimilarity,
+                'recencyBoost' => $recencyBoost,
+                'finalSimilarity' => $finalSimilarity,
+                'vocabularySize' => count($tfidfResult['vocabulary'])
+            ]);
+
+            return [
+                'semanticSimilarity' => $semanticSimilarity,
+                'recencyBoost' => $recencyBoost,
+                'finalSimilarity' => min($finalSimilarity, 1.0)
+            ];
+            
+        } catch (\Exception $e) {
+            $this->logError('Error in TF-IDF similarity calculation', [
+                'page1' => $page1['uid'] ?? 'unknown',
+                'page2' => $page2['uid'] ?? 'unknown',
+                'exception' => $e->getMessage()
+            ]);
+            
+            // Fallback vers l'ancien calcul en cas d'erreur
+            return $this->calculateSimilarityFallback($page1, $page2);
+        }
+    }
+
+    private function prepareTextForAnalysis(array $pageData): string
+    {
+        $texts = [];
+        
+        // Combiner tous les champs avec leurs poids
+        foreach ($this->settings['analyzedFields'] as $field => $weight) {
+            if (isset($pageData[$field]['content']) && !empty($pageData[$field]['content'])) {
+                // Répéter le texte selon son poids pour donner plus d'importance
+                $weightMultiplier = max(1, round((float)$weight));
+                for ($i = 0; $i < $weightMultiplier; $i++) {
+                    $texts[] = $pageData[$field]['content'];
+                }
+            }
+        }
+        
+        return implode(' ', $texts);
+    }
+
+    private function calculateSimilarityFallback(array $page1, array $page2): array
+    {
+        // Ancien calcul de similarité en fallback
         $words1 = $this->getWeightedWords($page1);
         $words2 = $this->getWeightedWords($page2);
     
         if (empty($words1) || empty($words2)) {
-            $this->logger?->warning('One or both pages have no weighted words', [
-                'page1' => $page1['uid'] ?? 'unknown',
-                'page2' => $page2['uid'] ?? 'unknown'
-            ]);
             return [
                 'semanticSimilarity' => 0.0,
                 'recencyBoost' => 0.0,
@@ -739,7 +855,6 @@ private function getAllSubpages(int $parentId, int $depth = 0): array
         }
     
         $allWords = array_unique(array_merge(array_keys($words1), array_keys($words2)));
-    
         $dotProduct = 0;
         $magnitude1 = 0;
         $magnitude2 = 0;
@@ -752,16 +867,10 @@ private function getAllSubpages(int $parentId, int $depth = 0): array
             $magnitude2 += $weight2 * $weight2;
         }
     
-
-    
         $magnitude1 = sqrt($magnitude1);
         $magnitude2 = sqrt($magnitude2);
     
         if ($magnitude1 === 0 || $magnitude2 === 0) {
-            $this->logger?->warning('Zero magnitude detected', [
-                'magnitude1' => $magnitude1,
-                'magnitude2' => $magnitude2
-            ]);
             return [
                 'semanticSimilarity' => 0.0,
                 'recencyBoost' => 0.0,
@@ -770,36 +879,9 @@ private function getAllSubpages(int $parentId, int $depth = 0): array
         }
     
         $semanticSimilarity = $dotProduct / ($magnitude1 * $magnitude2);
-    
         $recencyBoost = $this->calculateRecencyBoost($page1, $page2);
-    
         $recencyWeight = $this->settings['recencyWeight'] ?? 0.2;
-    
         $finalSimilarity = ($semanticSimilarity * (1 - $recencyWeight)) + ($recencyBoost * $recencyWeight);
-    
-        $fieldScores = [
-            'title' => $this->calculateFieldSimilarity($page1['title'] ?? [], $page2['title'] ?? []),
-            'description' => $this->calculateFieldSimilarity($page1['description'] ?? [], $page2['description'] ?? []),
-            'keywords' => $this->calculateFieldSimilarity($page1['keywords'] ?? [], $page2['keywords'] ?? []),
-            'content' => $this->calculateFieldSimilarity($page1['content'] ?? [], $page2['content'] ?? []),
-        ];
-  
-        $this->logDebug('Similarity calculated', [
-            'page1' => $page1['uid'],
-            'page2' => $page2['uid'],
-            'semanticSimilarity' => $semanticSimilarity,
-            'recencyBoost' => $recencyBoost,
-            'finalSimilarity' => $finalSimilarity
-        ]);
-
-        $this->logDebug('Similarity calculation details', [
-            'page1' => $page1['uid'] ?? 'unknown',
-            'page2' => $page2['uid'] ?? 'unknown',
-            'semanticSimilarity' => $semanticSimilarity,
-            'recencyBoost' => $recencyBoost,
-            'recencyWeight' => $recencyWeight,
-            'finalSimilarity' => $finalSimilarity
-        ]);
 
         return [
             'semanticSimilarity' => $semanticSimilarity,

@@ -49,6 +49,27 @@ plugin.tx_semanticsuggestion_suggestions {
             abstract = {$plugin.tx_semanticsuggestion_suggestions.settings.analyzedFields.abstract}
             content = {$plugin.tx_semanticsuggestion_suggestions.settings.analyzedFields.content}
         }
+
+        # Configuration NLP avancée avec nlp_tools
+        enableStemming = 1
+        defaultLanguage = en
+        
+        # Configuration de détection de langue pour TYPO3 12/13
+        languageMapping {
+            0 = en
+            1 = fr  
+            2 = de
+            3 = es
+            4 = it
+            5 = pt
+        }
+        
+        # Paramètres optimisés pour l'allemand
+        minTextLength = 50
+        confidenceThreshold = 0.3
+        
+        # Seuils ajustés pour TF-IDF
+        proximityThreshold = 0.25
     }
 }
 

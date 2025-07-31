@@ -34,6 +34,12 @@ return function (ContainerConfigurator $configurator, ContainerBuilder $containe
     $services->set(TalanHdf\SemanticSuggestion\Service\StopWordsService::class);
     $services->set(TalanHdf\SemanticSuggestion\Hooks\DataHandlerHook::class);
 
+    // Services nlp_tools
+    $services->set(Cywolf\NlpTools\Service\LanguageDetectionService::class)->public(true);
+    $services->set(Cywolf\NlpTools\Service\TextAnalysisService::class)->public(true);
+    $services->set(Cywolf\NlpTools\Service\TextVectorizerService::class)->public(true);
+    $services->set(Cywolf\NlpTools\Service\StopWordsFactory::class)->public(true);
+
     // Rendre les services Core nécessaires publics pour l'injection
     $services->set(TYPO3\CMS\Core\Log\LogManager::class)->public(true);
     $services->set(TYPO3\CMS\Core\Messaging\FlashMessageService::class)->public(true);

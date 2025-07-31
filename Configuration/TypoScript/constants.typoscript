@@ -8,7 +8,8 @@ plugin.tx_semanticsuggestion_suggestions {
     settings {
         # cat=semantic_suggestion:Frontend Display/100/001; type=float; label=Proximity Threshold
         # Minimum similarity score (0.0 to 1.0) for displaying suggestions. Must be >= Scheduler minimumSimilarity.
-        proximityThreshold = 0.5
+        # Note: TF-IDF scores are typically lower than cosine similarity - 0.15-0.25 is a good range
+        proximityThreshold = 0.15
 
         # cat=semantic_suggestion:Frontend Display/100/002; type=int+; label=Maximum Suggestions
         # The maximum number of similar pages to display in the suggestions list.

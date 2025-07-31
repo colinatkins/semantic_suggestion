@@ -26,19 +26,24 @@ return function (ContainerConfigurator $configurator, ContainerBuilder $containe
     // --- Enregistrements Inconditionnels ---
     $services->set(TalanHdf\SemanticSuggestion\Controller\SuggestionsController::class)->public(true);
     $services->set(TalanHdf\SemanticSuggestion\Task\GenerateSimilaritiesTask::class)->public(true);
+    $services->set(TalanHdf\SemanticSuggestion\Command\DiagnosticCommand::class)
+        ->addTag('console.command', ['command' => 'semantic:diagnostic']);
 
     $services->set(TalanHdf\SemanticSuggestion\Service\PageAnalysisService::class)->public(true);
     $services->set(TalanHdf\SemanticSuggestion\Service\SuggestionService::class);
     $services->set(TalanHdf\SemanticSuggestion\Service\UtilityService::class);
     $services->set(TalanHdf\SemanticSuggestion\Service\LanguageService::class);
     $services->set(TalanHdf\SemanticSuggestion\Service\StopWordsService::class);
+    $services->set(TalanHdf\SemanticSuggestion\Service\SiteLanguageService::class);
     $services->set(TalanHdf\SemanticSuggestion\Hooks\DataHandlerHook::class);
 
-    // Services nlp_tools
-    $services->set(Cywolf\NlpTools\Service\LanguageDetectionService::class)->public(true);
-    $services->set(Cywolf\NlpTools\Service\TextAnalysisService::class)->public(true);
-    $services->set(Cywolf\NlpTools\Service\TextVectorizerService::class)->public(true);
-    $services->set(Cywolf\NlpTools\Service\StopWordsFactory::class)->public(true);
+    // Services nlp_tools (optional - will be auto-instantiated if available)
+    if (class_exists(\Cywolf\NlpTools\Service\LanguageDetectionService::class)) {
+        $services->set(Cywolf\NlpTools\Service\LanguageDetectionService::class)->public(true);
+        $services->set(Cywolf\NlpTools\Service\TextAnalysisService::class)->public(true);
+        $services->set(Cywolf\NlpTools\Service\TextVectorizerService::class)->public(true);
+        $services->set(Cywolf\NlpTools\Service\StopWordsFactory::class)->public(true);
+    }
 
     // Rendre les services Core nécessaires publics pour l'injection
     $services->set(TYPO3\CMS\Core\Log\LogManager::class)->public(true);

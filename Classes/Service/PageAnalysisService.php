@@ -22,6 +22,7 @@ use Psr\Log\NullLogger;
 use Cywolf\NlpTools\Service\LanguageDetectionService;
 use Cywolf\NlpTools\Service\TextAnalysisService;
 use Cywolf\NlpTools\Service\TextVectorizerService;
+use TalanHdf\SemanticSuggestion\Service\SiteLanguageService;
 
 class PageAnalysisService implements LoggerAwareInterface
 {
@@ -36,34 +37,33 @@ class PageAnalysisService implements LoggerAwareInterface
     protected StopWordsService $stopWordsService;
     protected SiteFinder $siteFinder;
     protected FrontendInterface $cache;
-    protected LanguageDetectionService $languageDetector;
-    protected TextAnalysisService $textAnalyzer;
-    protected TextVectorizerService $textVectorizer;
+    protected $languageDetector;
+    protected $textAnalyzer;
+    protected $textVectorizer;
+    protected ?SiteLanguageService $siteLanguageService;
 
     public function __construct(
         Context $context,
         ConfigurationManagerInterface $configurationManager,
         StopWordsService $stopWordsService,
         SiteFinder $siteFinder,
-        LanguageDetectionService $languageDetector,
-        TextAnalysisService $textAnalyzer,
-        TextVectorizerService $textVectorizer,
         ?CacheManager $cacheManager = null,
         ?ConnectionPool $connectionPool = null,
-        ?LoggerInterface $logger = null
+        ?LoggerInterface $logger = null,
+        ?SiteLanguageService $siteLanguageService = null,
+        ?LanguageDetectionService $languageDetector = null,
+        ?TextAnalysisService $textAnalyzer = null,
+        ?TextVectorizerService $textVectorizer = null
     ) {
         $this->context = $context;
         $this->configurationManager = $configurationManager;
         $this->stopWordsService = $stopWordsService;
         $this->siteFinder = $siteFinder;
-        $this->languageDetector = $languageDetector;
-        $this->textAnalyzer = $textAnalyzer;
-        $this->textVectorizer = $textVectorizer;
+        $this->siteLanguageService = $siteLanguageService ?? GeneralUtility::makeInstance(SiteLanguageService::class);
         $this->cacheManager = $cacheManager;
         $this->connectionPool = $connectionPool ?? GeneralUtility::makeInstance(ConnectionPool::class);
         $this->logger = $logger ?? new NullLogger();
-
-
+        
         if ($logger !== null) {
             $this->setLogger($logger);
         }
@@ -75,11 +75,69 @@ class PageAnalysisService implements LoggerAwareInterface
 
         $this->initializeSettings();
         $this->initializeCache();
+        
+        // Initialize nlp_tools services AFTER settings are initialized
+        $this->initializeNlpServices($languageDetector, $textAnalyzer, $textVectorizer);
+    }
+
+    protected function initializeNlpServices(
+        ?LanguageDetectionService $languageDetector = null,
+        ?TextAnalysisService $textAnalyzer = null,
+        ?TextVectorizerService $textVectorizer = null
+    ): void {
+        try {
+            // Try to use injected services first, fallback to manual instantiation
+            $this->languageDetector = $languageDetector ?? GeneralUtility::makeInstance(LanguageDetectionService::class);
+            $this->textAnalyzer = $textAnalyzer ?? GeneralUtility::makeInstance(TextAnalysisService::class);  
+            $this->textVectorizer = $textVectorizer ?? GeneralUtility::makeInstance(TextVectorizerService::class);
+            
+            $this->logDebug('nlp_tools services initialized successfully');
+        } catch (\Exception $e) {
+            $this->logError('Failed to initialize nlp_tools services', ['exception' => $e->getMessage()]);
+            
+            // Create null implementations to prevent crashes
+            $this->languageDetector = $this->createNullLanguageDetector();
+            $this->textAnalyzer = $this->createNullTextAnalyzer(); 
+            $this->textVectorizer = $this->createNullTextVectorizer();
+        }
+    }
+
+    private function createNullLanguageDetector(): object
+    {
+        return new class {
+            public function detectLanguage(string $text): string {
+                return 'en'; // Default fallback
+            }
+        };
+    }
+
+    private function createNullTextAnalyzer(): object  
+    {
+        return new class {
+            public function removeStopWords(string $text, ?string $language = null): string {
+                return $text; // No processing
+            }
+            public function stem(string $text, ?string $language = null): array {
+                return explode(' ', $text); // Basic tokenization
+            }
+        };
+    }
+
+    private function createNullTextVectorizer(): object
+    {
+        return new class {
+            public function createTfIdfVectors(array $texts, ?string $language = null): array {
+                return ['vectors' => [], 'vocabulary' => []]; // Empty result
+            }
+            public function cosineSimilarity(array $vector1, array $vector2): float {
+                return 0.0; // No similarity
+            }
+        };
     }
 
     private function logDebug(string $message, array $context = []): void
     {
-        if ($this->settings['debugMode']) {
+        if (isset($this->settings['debugMode']) && $this->settings['debugMode']) {
             $this->logger->debug($message, $context);
         }
     }
@@ -201,25 +259,58 @@ class PageAnalysisService implements LoggerAwareInterface
     
     protected function getCurrentLanguage(): string
     {
-        // Utiliser le service de détection intelligent de nlp_tools
+        // Premier essai: Configuration TYPO3 Site via SiteLanguageService
+        if ($this->siteLanguageService !== null) {
+            try {
+                $languageAspect = $this->context->getAspect('language');
+                $languageId = $languageAspect->getId();
+                $currentPageId = $this->getCurrentPageId();
+                
+                $siteLanguageCode = $this->siteLanguageService->getLanguageCodeByUid($languageId, $currentPageId);
+                if ($siteLanguageCode !== null) {
+                    $this->logDebug('Language detected from TYPO3 site configuration', [
+                        'languageId' => $languageId,
+                        'pageId' => $currentPageId,
+                        'detectedCode' => $siteLanguageCode
+                    ]);
+                    return $siteLanguageCode;
+                }
+            } catch (\Exception $e) {
+                $this->logWarning('Error detecting language from site configuration', ['exception' => $e->getMessage()]);
+            }
+        }
+        
+        // Deuxième essai: Détection via nlp_tools avec contenu exemple
         try {
+            // Utiliser un contenu vide pour détecter la langue par défaut
             $detectedLanguage = $this->languageDetector->detectLanguage('');
-            $this->logDebug('Language detected via nlp_tools', ['language' => $detectedLanguage]);
+            $this->logDebug('Language detected via nlp_tools fallback', ['language' => $detectedLanguage]);
             return $detectedLanguage;
         } catch (\Exception $e) {
-            $this->logError('Error detecting language via nlp_tools', ['exception' => $e->getMessage()]);
-            
-            // Fallback vers l'ancienne méthode
+            $this->logWarning('Error detecting language via nlp_tools', ['exception' => $e->getMessage()]);
+        }
+        
+        // Troisième essai: TypoScript mapping (deprecated mais gardé comme fallback)
+        try {
             $languageAspect = $this->context->getAspect('language');
             $languageId = $languageAspect->getId();
             
             $typoscriptLanguage = $this->getLanguageFromTypoScript($languageId);
             if ($typoscriptLanguage !== null) {
+                $this->logDebug('Language detected from TypoScript mapping', [
+                    'languageId' => $languageId,
+                    'detectedCode' => $typoscriptLanguage
+                ]);
                 return $typoscriptLanguage;
             }
-            
-            return $this->settings['defaultLanguage'] ?? 'en';
+        } catch (\Exception $e) {
+            $this->logWarning('Error detecting language from TypoScript', ['exception' => $e->getMessage()]);
         }
+        
+        // Fallback final
+        $defaultLanguage = $this->settings['defaultLanguage'] ?? 'en';
+        $this->logDebug('Using default language fallback', ['defaultLanguage' => $defaultLanguage]);
+        return $defaultLanguage;
     }
 
     protected function getCurrentPageId(): ?int
@@ -452,14 +543,18 @@ class PageAnalysisService implements LoggerAwareInterface
                 foreach ($analysisResults as $comparisonPageId => $comparisonPageData) {
                     if ($pageId !== $comparisonPageId) {
                         $similarity = $this->calculateSimilarity($pageData, $comparisonPageData);
-                        $pageData['similarities'][$comparisonPageId] = [
-                            'score' => $similarity['finalSimilarity'],
-                            'semanticSimilarity' => $similarity['semanticSimilarity'],
-                            'recencyBoost' => $similarity['recencyBoost'],
-                            'commonKeywords' => $this->findCommonKeywords($pageData, $comparisonPageData),
-                            'relevance' => $this->determineRelevance($similarity['finalSimilarity']),
-                            'ageInDays' => round((time() - ($comparisonPageData['content_modified_at'] ?? time())) / (24 * 3600), 1),
-                        ];
+                        
+                        // Ne pas ajouter les similarités à 0 (langues incompatibles)
+                        if ($similarity['finalSimilarity'] > 0) {
+                            $pageData['similarities'][$comparisonPageId] = [
+                                'score' => $similarity['finalSimilarity'],
+                                'semanticSimilarity' => $similarity['semanticSimilarity'],
+                                'recencyBoost' => $similarity['recencyBoost'],
+                                'commonKeywords' => $this->findCommonKeywords($pageData, $comparisonPageData),
+                                'relevance' => $this->determineRelevance($similarity['finalSimilarity']),
+                                'ageInDays' => round((time() - ($comparisonPageData['content_modified_at'] ?? time())) / (24 * 3600), 1),
+                            ];
+                        }
                         
                         $similarityCalculations++;
                     }
@@ -747,6 +842,31 @@ private function getAllSubpages(int $parentId, int $depth = 0): array
 
     private function calculateSimilarity(array $page1, array $page2): array
     {
+        // Vérifier la compatibilité des langues avant le calcul
+        if ($this->siteLanguageService !== null) {
+            $lang1 = $this->siteLanguageService->detectLanguageForPage($page1, $this->languageDetector);
+            $lang2 = $this->siteLanguageService->detectLanguageForPage($page2, $this->languageDetector);
+            
+            if (!$this->siteLanguageService->areLanguagesCompatible($lang1, $lang2)) {
+                $this->logDebug('Languages not compatible, skipping similarity calculation', [
+                    'page1' => $page1['uid'] ?? 'unknown',
+                    'page2' => $page2['uid'] ?? 'unknown',
+                    'lang1' => $lang1,
+                    'lang2' => $lang2
+                ]);
+                return [
+                    'semanticSimilarity' => 0.0,
+                    'recencyBoost' => 0.0,
+                    'finalSimilarity' => 0.0
+                ];
+            }
+            // Utiliser la langue détectée pour l'analyse
+            $language = $lang1; // Les deux langues sont identiques à ce stade
+        } else {
+            // Fallback si SiteLanguageService n'est pas disponible
+            $language = $this->languageDetector->detectLanguage($this->prepareTextForAnalysis($page1));
+        }
+        
         try {
             // Préparer les textes pour l'analyse TF-IDF
             $text1 = $this->prepareTextForAnalysis($page1);
@@ -764,8 +884,8 @@ private function getAllSubpages(int $parentId, int $depth = 0): array
                 ];
             }
 
-            // Détecter la langue du contenu
-            $language = $this->languageDetector->detectLanguage($text1);
+            // Utiliser la langue détectée pour l'analyse
+            $language = $lang1; // Les deux langues sont identiques à ce stade
             
             // Créer les vecteurs TF-IDF
             $tfidfResult = $this->textVectorizer->createTfIdfVectors([$text1, $text2], $language);

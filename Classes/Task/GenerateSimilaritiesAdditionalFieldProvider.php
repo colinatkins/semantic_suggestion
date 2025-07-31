@@ -90,7 +90,7 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
             if ($task instanceof GenerateSimilaritiesTask) {
                 $taskInfo['minimumSimilarity'] = $task->minimumSimilarity;
             } else {
-                $taskInfo['minimumSimilarity'] = 0.5; // Valeur par défaut
+                $taskInfo['minimumSimilarity'] = 0.1; // Valeur par défaut ajustée pour TF-IDF
             }
         }
         

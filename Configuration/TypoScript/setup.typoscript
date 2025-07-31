@@ -54,22 +54,18 @@ plugin.tx_semanticsuggestion_suggestions {
         enableStemming = 1
         defaultLanguage = en
         
-        # Configuration de détection de langue pour TYPO3 12/13
-        languageMapping {
-            0 = en
-            1 = fr  
-            2 = de
-            3 = es
-            4 = it
-            5 = pt
-        }
+        # Note: Language mapping is now handled automatically via TYPO3 Site Configuration
+        # No more hard-coded language mappings needed
         
         # Paramètres optimisés pour l'allemand
         minTextLength = 50
         confidenceThreshold = 0.3
         
-        # Seuils ajustés pour TF-IDF
-        proximityThreshold = 0.25
+        # Seuils ajustés pour TF-IDF (plus bas car TF-IDF génère des scores plus faibles)
+        proximityThreshold = 0.15
+        
+        # Debug temporaire pour diagnostiquer l'allemand
+        debugMode = 1
     }
 }
 

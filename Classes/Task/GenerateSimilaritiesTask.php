@@ -34,7 +34,7 @@ class GenerateSimilaritiesTask extends AbstractTask
      * Seuil minimum de similarité pour enregistrer en BDD
      * @var float
      */
-    public $minimumSimilarity = 0.5;
+    public $minimumSimilarity = 0.1; // Ajusté pour TF-IDF (scores plus bas)
     
     /**
      * Détermine si l'exclusion est récursive ou non

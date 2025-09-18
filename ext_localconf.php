@@ -52,11 +52,11 @@ use TYPO3\CMS\Core\Log\Writer\FileWriter;
         ];
     }
 
-    // Enregistrement de la tâche Scheduler
+    // Scheduler task registration
     $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['scheduler']['tasks'][\TalanHdf\SemanticSuggestion\Task\GenerateSimilaritiesTask::class] = [
         'extension' => 'semantic_suggestion',
-        'title' => 'Générer les similarités sémantiques',
-        'description' => 'Analyse les pages du site et génère un tableau des similarités sémantiques',
+        'title' => 'LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.task.title',
+        'description' => 'LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.task.description',
         'additionalFields' => \TalanHdf\SemanticSuggestion\Task\GenerateSimilaritiesAdditionalFieldProvider::class
     ];
 

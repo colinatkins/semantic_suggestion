@@ -300,6 +300,14 @@
             <trans-unit id="scheduler.info.minimum_threshold">
                 <source>Minimum threshold</source>
             </trans-unit>
+
+            <!-- Scheduler Task Registration -->
+            <trans-unit id="scheduler.task.title">
+                <source>Semantic Suggestion: Generate Similarities</source>
+            </trans-unit>
+            <trans-unit id="scheduler.task.description">
+                <source>Analyzes site pages and generates semantic similarity relationships for content recommendations</source>
+            </trans-unit>
         </body>
     </file>
 </xliff>

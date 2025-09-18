@@ -261,7 +261,7 @@
                 <source>Exclude recursively sub-pages</source>
             </trans-unit>
             <trans-unit id="scheduler.task.recursive_exclusion.description">
-                <source>If checked: exclude the page AND all its sub-pages<br>If unchecked: exclude only the page, but analyze its sub-pages</source>
+                <source>If checked: exclude the page AND all its sub-pages<br/>If unchecked: exclude only the page, but analyze its sub-pages</source>
             </trans-unit>
             <trans-unit id="scheduler.task.minimum_similarity">
                 <source>Minimum similarity threshold (0-1)</source>

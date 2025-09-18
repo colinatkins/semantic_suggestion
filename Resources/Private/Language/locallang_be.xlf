@@ -15,6 +15,237 @@
             <trans-unit id="flexforms.proximityThreshold">
                 <source>Proximity Threshold</source>
             </trans-unit>
+
+            <!-- Backend Module Translations -->
+            <trans-unit id="backend.title">
+                <source>Semantic Suggestion - Backend Analysis</source>
+            </trans-unit>
+            <trans-unit id="backend.title.legacy">
+                <source>Semantic Suggestion - Backend Analysis (v12)</source>
+            </trans-unit>
+
+            <!-- Error Messages -->
+            <trans-unit id="backend.error.no_analysis">
+                <source>No analysis available</source>
+            </trans-unit>
+            <trans-unit id="backend.error.no_analysis.message">
+                <source>No similarity analysis found. Please configure and run the "Semantic Suggestion: Generate Similarities" scheduler task.</source>
+            </trans-unit>
+
+            <!-- Configuration Instructions -->
+            <trans-unit id="backend.config.required">
+                <source>Required configuration:</source>
+            </trans-unit>
+            <trans-unit id="backend.config.step1">
+                <source>Go to the <strong>System > Scheduler</strong> module</source>
+            </trans-unit>
+            <trans-unit id="backend.config.step2">
+                <source>Create a new <strong>"Semantic Suggestion: Generate Similarities"</strong> task</source>
+            </trans-unit>
+            <trans-unit id="backend.config.step3">
+                <source>Configure the parameters:</source>
+            </trans-unit>
+            <trans-unit id="backend.config.param.start_page">
+                <source><strong>Start Page ID</strong>: Root page ID for analysis (e.g.: 1)</source>
+            </trans-unit>
+            <trans-unit id="backend.config.param.threshold">
+                <source><strong>Minimum similarity threshold</strong>: Storage threshold (e.g.: 0.3)</source>
+            </trans-unit>
+            <trans-unit id="backend.config.param.exclude">
+                <source><strong>Pages to exclude</strong>: Pages to exclude (optional)</source>
+            </trans-unit>
+            <trans-unit id="backend.config.step4">
+                <source>Schedule execution (daily/weekly during off-peak hours)</source>
+            </trans-unit>
+            <trans-unit id="backend.config.step5">
+                <source>Run the task once for the first time</source>
+            </trans-unit>
+            <trans-unit id="backend.config.note">
+                <source><strong>Note:</strong> The first execution may take time depending on the number of pages to analyze.</source>
+            </trans-unit>
+
+            <!-- Analysis Selection -->
+            <trans-unit id="backend.analysis.selection">
+                <source>Analysis selection</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.available">
+                <source>Available Scheduler analysis</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.help">
+                <source>Each analysis corresponds to a Scheduler task execution with a specific Start Page ID.</source>
+            </trans-unit>
+            <trans-unit id="backend.refresh">
+                <source>Refresh</source>
+            </trans-unit>
+
+            <!-- Analysis Configuration -->
+            <trans-unit id="backend.analysis.config">
+                <source>Selected analysis configuration</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.start_page">
+                <source>Start Page ID</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.start_page.help">
+                <source>Configured in Scheduler</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.pages_analyzed">
+                <source>Analyzed pages</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.pages_analyzed.help">
+                <source>With at least one similarity</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.stored_pairs">
+                <source>Stored pairs</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.stored_pairs.help">
+                <source>Above Scheduler threshold</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.display_threshold">
+                <source>Display threshold</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.display_threshold.help">
+                <source>Configured in TypoScript</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.max_suggestions">
+                <source>Max frontend suggestions</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.max_suggestions.help">
+                <source>Display limit</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.pages_with_similarities">
+                <source>Pages with similarities</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.pages_with_similarities.help">
+                <source>In current results</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.excluded_pages">
+                <source>Excluded pages (display)</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.excluded_pages.yes">
+                <source>Yes</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.excluded_pages.none">
+                <source>None</source>
+            </trans-unit>
+            <trans-unit id="backend.analysis.excluded_pages.none_help">
+                <source>No exclusion</source>
+            </trans-unit>
+
+            <!-- Performance Metrics -->
+            <trans-unit id="backend.performance.title">
+                <source>Performance metrics</source>
+            </trans-unit>
+            <trans-unit id="backend.performance.execution_time">
+                <source>Loading time</source>
+            </trans-unit>
+            <trans-unit id="backend.performance.execution_time.help">
+                <source>Backend module</source>
+            </trans-unit>
+            <trans-unit id="backend.performance.database_pairs">
+                <source>Database pairs</source>
+            </trans-unit>
+            <trans-unit id="backend.performance.database_pairs.help">
+                <source>For this analysis</source>
+            </trans-unit>
+
+            <!-- Language Statistics -->
+            <trans-unit id="backend.language.title">
+                <source>Language statistics</source>
+            </trans-unit>
+            <trans-unit id="backend.language.table.language">
+                <source>Language</source>
+            </trans-unit>
+            <trans-unit id="backend.language.table.pages">
+                <source>Pages</source>
+            </trans-unit>
+            <trans-unit id="backend.language.table.percentage">
+                <source>Percentage</source>
+            </trans-unit>
+            <trans-unit id="backend.language.help">
+                <source>Statistics based on pages with at least one similarity in the selected analysis.</source>
+            </trans-unit>
+
+            <!-- Top Similar Pairs -->
+            <trans-unit id="backend.top_pairs.title">
+                <source>Top 5 most similar pairs</source>
+            </trans-unit>
+            <trans-unit id="backend.top_pairs.page1">
+                <source>Page 1</source>
+            </trans-unit>
+            <trans-unit id="backend.top_pairs.page2">
+                <source>Page 2</source>
+            </trans-unit>
+            <trans-unit id="backend.top_pairs.similarity_score">
+                <source>Similarity score</source>
+            </trans-unit>
+
+            <!-- Top Similar Pages -->
+            <trans-unit id="backend.top_pages.title">
+                <source>Top 5 pages with most similarities</source>
+            </trans-unit>
+            <trans-unit id="backend.top_pages.page">
+                <source>Page</source>
+            </trans-unit>
+            <trans-unit id="backend.top_pages.similar_count">
+                <source>Number of similar pages</source>
+            </trans-unit>
+
+            <!-- General Statistics -->
+            <trans-unit id="backend.statistics.title">
+                <source>General statistics</source>
+            </trans-unit>
+            <trans-unit id="backend.statistics.total_pairs">
+                <source>Similarity pairs</source>
+            </trans-unit>
+            <trans-unit id="backend.statistics.total_pairs.help">
+                <source>Stored above threshold</source>
+            </trans-unit>
+            <trans-unit id="backend.statistics.total_pages">
+                <source>Pages with similarities</source>
+            </trans-unit>
+            <trans-unit id="backend.statistics.total_pages.help">
+                <source>Having at least one relationship</source>
+            </trans-unit>
+
+            <!-- Footer Information -->
+            <trans-unit id="backend.info.configuration">
+                <source>Configuration</source>
+            </trans-unit>
+            <trans-unit id="backend.info.scheduler">
+                <source><strong>Scheduler:</strong> Configure analysis (Start Page ID, storage threshold)</source>
+            </trans-unit>
+            <trans-unit id="backend.info.typoscript">
+                <source><strong>TypoScript:</strong> Configure frontend display (display threshold, max number)</source>
+            </trans-unit>
+            <trans-unit id="backend.info.database">
+                <source><strong>Database:</strong> Persistent storage of similarities</source>
+            </trans-unit>
+            <trans-unit id="backend.tips.title">
+                <source>Tips</source>
+            </trans-unit>
+            <trans-unit id="backend.tips.scheduler">
+                <source>Run Scheduler during off-peak hours</source>
+            </trans-unit>
+            <trans-unit id="backend.tips.threshold">
+                <source>Scheduler threshold ≤ TypoScript threshold</source>
+            </trans-unit>
+            <trans-unit id="backend.tips.performance">
+                <source>Monitor performance for large sites</source>
+            </trans-unit>
+
+            <!-- Flash Messages -->
+            <trans-unit id="backend.flash.no_analysis_found">
+                <source>No similarity analysis found. Please configure and run the "Semantic Suggestion: Generate Similarities" scheduler task.</source>
+            </trans-unit>
+            <trans-unit id="backend.flash.no_data_available">
+                <source>No data available</source>
+            </trans-unit>
+            <trans-unit id="backend.flash.module_error">
+                <source>An error occurred while loading the module. Check the logs: %s</source>
+            </trans-unit>
+            <trans-unit id="backend.flash.error">
+                <source>Error</source>
+            </trans-unit>
         </body>
     </file>
 </xliff>

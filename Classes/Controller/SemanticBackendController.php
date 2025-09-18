@@ -17,6 +17,7 @@ use TalanHdf\SemanticSuggestion\Service\PageAnalysisService;
 use TalanHdf\SemanticSuggestion\Service\LanguageService;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
+use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
 class SemanticBackendController extends ActionController
 {
@@ -90,13 +91,13 @@ class SemanticBackendController extends ActionController
             // Vérifier si un rootPageId valide a été trouvé
             if ($rootPageId <= 0 || empty($availableAnalyses)) {
                 $this->addFlashMessage(
-                    'Aucune analyse de similarité trouvée. Veuillez configurer et exécuter la tâche Scheduler "Semantic Suggestion: Generate Similarities".',
-                    'Aucune donnée disponible',
+                    LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.flash.no_analysis_found', 'semantic_suggestion') ?? 'No similarity analysis found. Please configure and run the "Semantic Suggestion: Generate Similarities" scheduler task.',
+                    LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.flash.no_data_available', 'semantic_suggestion') ?? 'No data available',
                     ContextualFeedbackSeverity::INFO
                 );
                 
                 $moduleTemplate->assignMultiple([
-                    'errorMessage' => 'Aucune analyse de similarité trouvée.',
+                    'errorMessage' => LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.error.no_analysis.message', 'semantic_suggestion') ?? 'No similarity analysis found. Please configure and run the "Semantic Suggestion: Generate Similarities" scheduler task.',
                     'availableAnalyses' => [],
                     'showStatistics' => $showStatistics,
                     'showPerformanceMetrics' => $showPerformanceMetrics,
@@ -179,12 +180,15 @@ class SemanticBackendController extends ActionController
             ]);
             
             $this->addFlashMessage(
-                'Une erreur est survenue lors du chargement du module. Consultez les logs.',
-                'Erreur',
+                sprintf(
+                    LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.flash.module_error', 'semantic_suggestion') ?? 'An error occurred while loading the module. Check the logs: %s',
+                    'General error'
+                ),
+                LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.flash.error', 'semantic_suggestion') ?? 'Error',
                 ContextualFeedbackSeverity::ERROR
             );
 
-            $moduleTemplate->assign('errorMessage', 'Erreur lors du chargement du module.');
+            $moduleTemplate->assign('errorMessage', LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.flash.error', 'semantic_suggestion') ?? 'Error');
             return $moduleTemplate->renderResponse('SemanticBackend/Index');
         }
     }

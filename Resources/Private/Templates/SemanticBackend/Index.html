@@ -8,30 +8,30 @@
             <div class="col-12">
                 <h1 class="mb-4">
                     <core:icon identifier="content-elements-mailform" size="large" />
-                    Semantic Suggestion - Analyse Backend
+                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.title" />
                 </h1>
                 
                 <f:if condition="{errorMessage}">
                     <div class="alert alert-info">
-                        <h4><core:icon identifier="actions-info" /> Aucune analyse disponible</h4>
+                        <h4><core:icon identifier="actions-info" /> <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.error.no_analysis" /></h4>
                         <p>{errorMessage}</p>
                         <div class="mt-3">
-                            <p><strong>Configuration requise :</strong></p>
+                            <p><strong><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.config.required" /></strong></p>
                             <ol class="mb-3">
-                                <li>Allez dans le module <strong>Système > Scheduler</strong></li>
-                                <li>Créez une nouvelle tâche <strong>"Semantic Suggestion: Generate Similarities"</strong></li>
-                                <li>Configurez les paramètres :
+                                <li><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.config.step1" /></li>
+                                <li><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.config.step2" /></li>
+                                <li><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.config.step3" />
                                     <ul>
-                                        <li><strong>Start Page ID</strong> : ID de la page racine d'analyse (ex: 1)</li>
-                                        <li><strong>Minimum similarity threshold</strong> : Seuil de stockage (ex: 0.3)</li>
-                                        <li><strong>Pages to exclude</strong> : Pages à exclure (optionnel)</li>
+                                        <li><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.config.param.start_page" /></li>
+                                        <li><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.config.param.threshold" /></li>
+                                        <li><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.config.param.exclude" /></li>
                                     </ul>
                                 </li>
-                                <li>Programmez l'exécution (quotidienne/hebdomadaire en heures creuses)</li>
-                                <li>Exécutez la tâche une première fois</li>
+                                <li><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.config.step4" /></li>
+                                <li><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.config.step5" /></li>
                             </ol>
                             <div class="alert alert-warning">
-                                <strong>Note :</strong> La première exécution peut prendre du temps selon le nombre de pages à analyser.
+                                <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.config.note" />
                             </div>
                         </div>
                     </div>
@@ -42,26 +42,26 @@
                         <div class="card-header">
                             <h3 class="card-title mb-0">
                                 <core:icon identifier="actions-system-list-open" />
-                                Sélection de l'analyse
+                                <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.selection" />
                             </h3>
                         </div>
                         <div class="card-body">
                             <form action="{f:uri.action(controller: 'SemanticBackend', action: 'index')}" method="get" class="row g-3">
                                 <div class="col-md-10">
-                                    <label for="rootPageId" class="form-label">Analyse Scheduler disponible</label>
+                                    <label for="rootPageId" class="form-label"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.available" /></label>
                                     <select name="rootPageId" id="rootPageId" class="form-select" onchange="this.form.submit()">
                                         <f:for each="{availableAnalyses}" as="analysis">
                                             <option value="{analysis.root_page_id}" {f:if(condition: '{analysis.root_page_id} == {currentRootPageId}', then: 'selected')}>
-                                                {analysis.title} | {analysis.page_count} pages analysées | {analysis.pair_count} paires stockées | Start Page ID: {analysis.root_page_id}
+                                                {analysis.title} | {analysis.page_count} <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.pages_analyzed" /> | {analysis.pair_count} <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.stored_pairs" /> | Start Page ID: {analysis.root_page_id}
                                             </option>
                                         </f:for>
                                     </select>
-                                    <div class="form-text">Chaque analyse correspond à une exécution de la tâche Scheduler avec un Start Page ID spécifique.</div>
+                                    <div class="form-text"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.help" /></div>
                                 </div>
                                 <div class="col-md-2 d-flex align-items-end">
                                 <f:link.action action="index" class="btn btn-primary">
                                     <core:icon identifier="actions-refresh" />
-                                    Actualiser
+                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.refresh" />
                                 </f:link.action>
                                 </div>
                             </form>
@@ -74,53 +74,85 @@
                         <div class="card-header">
                             <h3 class="card-title mb-0">
                                 <core:icon identifier="actions-system-list-open" />
-                                Configuration de l'analyse sélectionnée
+                                <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.config" />
                             </h3>
                         </div>
                         <div class="card-body">
                             <div class="row g-3">
+                                <f:variable name="startPageContent">
+                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.start_page" /><br><small class='text-muted'><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.start_page.help" /></small>
+                                </f:variable>
                                 <f:render section="Card" arguments="{
-                                    icon: 'apps-pagetree-root', 
-                                    header: currentAnalysis.root_page_id, 
-                                    content: 'Start Page ID<br><small class=\\'text-muted\\'>Configuré dans le Scheduler</small>',
+                                    icon: 'apps-pagetree-root',
+                                    header: currentAnalysis.root_page_id,
+                                    content: startPageContent,
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
                                 }" />
+                                <f:variable name="pagesAnalyzedContent">
+                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.pages_analyzed" /><br><small class='text-muted'><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.pages_analyzed.help" /></small>
+                                </f:variable>
                                 <f:render section="Card" arguments="{
-                                    icon: 'apps-pagetree-page-default', 
-                                    header: currentAnalysis.page_count, 
-                                    content: 'Pages analysées<br><small class=\\'text-muted\\'>Avec au moins une similarité</small>',
+                                    icon: 'apps-pagetree-page-default',
+                                    header: currentAnalysis.page_count,
+                                    content: pagesAnalyzedContent,
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
                                 }" />
+                                <f:variable name="storedPairsContent">
+                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.stored_pairs" /><br><small class='text-muted'><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.stored_pairs.help" /></small>
+                                </f:variable>
                                 <f:render section="Card" arguments="{
-                                    icon: 'actions-database', 
-                                    header: currentAnalysis.pair_count, 
-                                    content: 'Paires stockées<br><small class=\\'text-muted\\'>Au-dessus du seuil Scheduler</small>',
+                                    icon: 'actions-database',
+                                    header: currentAnalysis.pair_count,
+                                    content: storedPairsContent,
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
                                 }" />
+                                <f:variable name="displayThresholdContent">
+                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.display_threshold" /><br><small class='text-muted'><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.display_threshold.help" /></small>
+                                </f:variable>
                                 <f:render section="Card" arguments="{
-                                    icon: 'actions-filter', 
-                                    header: '{proximityThreshold -> f:format.number(decimals: 2)}', 
-                                    content: 'Seuil d\\'affichage<br><small class=\\'text-muted\\'>Configuré en TypoScript</small>',
+                                    icon: 'actions-filter',
+                                    header: '{proximityThreshold -> f:format.number(decimals: 2)}',
+                                    content: displayThresholdContent,
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
                                 }" />
                             </div>
                             <div class="row g-3 mt-2">
+                                <f:variable name="maxSuggestionsContent">
+                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.max_suggestions" /><br><small class='text-muted'><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.max_suggestions.help" /></small>
+                                </f:variable>
                                 <f:render section="Card" arguments="{
-                                    icon: 'actions-add', 
-                                    header: maxSuggestions, 
-                                    content: 'Max suggestions frontend<br><small class=\\'text-muted\\'>Limite d\\'affichage</small>',
+                                    icon: 'actions-add',
+                                    header: maxSuggestions,
+                                    content: maxSuggestionsContent,
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
                                 }" />
+                                <f:variable name="pagesWithSimilaritiesContent">
+                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.pages_with_similarities" /><br><small class='text-muted'><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.pages_with_similarities.help" /></small>
+                                </f:variable>
                                 <f:render section="Card" arguments="{
-                                    icon: 'apps-pagetree-page-default', 
+                                    icon: 'apps-pagetree-page-default',
                                     header: totalValidatedPages,
-                                    content: 'Pages avec similarités<br><small class=\\'text-muted\\'>Dans les résultats actuels</small>',
+                                    content: pagesWithSimilaritiesContent,
                                     colClass: 'col-lg-3 col-md-4 col-sm-6'
                                 }" />
+                                <f:variable name="excludedPagesHeader">
+                                    <f:if condition="{excludePages}">
+                                        <f:then><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.excluded_pages.yes" /></f:then>
+                                        <f:else><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.excluded_pages.none" /></f:else>
+                                    </f:if>
+                                </f:variable>
+                                <f:variable name="excludedPagesContent">
+                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.excluded_pages" /><br><small class='text-muted'>
+                                        <f:if condition="{excludePages}">
+                                            <f:then>{excludePages}</f:then>
+                                            <f:else><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.excluded_pages.none_help" /></f:else>
+                                        </f:if>
+                                    </small>
+                                </f:variable>
                                 <f:render section="Card" arguments="{
-                                    icon: 'status-dialog-blocked', 
-                                    header: '{f:if(condition: excludePages, then: \\'Oui\\', else: \\'Aucune\\')}', 
-                                    content: 'Pages exclues (affichage)<br><small class=\\'text-muted\\'>{f:if(condition: excludePages, then: excludePages, else: \\'Aucune exclusion\\')}</small>',
+                                    icon: 'status-dialog-blocked',
+                                    header: excludedPagesHeader,
+                                    content: excludedPagesContent,
                                     colClass: 'col-lg-6 col-md-8'
                                 }" />
                             </div>
@@ -133,21 +165,27 @@
                         <div class="card-header">
                             <h3 class="card-title mb-0">
                                 <core:icon identifier="actions-clock" />
-                                Métriques de performance
+                                <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.performance.title" />
                             </h3>
                         </div>
                         <div class="card-body">
                             <div class="row g-3">
+                                <f:variable name="executionTimeContent">
+                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.performance.execution_time" /><br><small class='text-muted'><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.performance.execution_time.help" /></small>
+                                </f:variable>
                                 <f:render section="Card" arguments="{
                                     icon: 'actions-clock',
                                     header: '{performanceMetrics.executionTime -> f:format.number(decimals: 3)}s',
-                                    content: 'Temps de chargement<br><small class=\\'text-muted\\'>Module backend</small>',
+                                    content: executionTimeContent,
                                     colClass: 'col-lg-6 col-md-6'
                                 }" />
+                                <f:variable name="databasePairsContent">
+                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.performance.database_pairs" /><br><small class='text-muted'><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.performance.database_pairs.help" /></small>
+                                </f:variable>
                                 <f:render section="Card" arguments="{
                                     icon: 'actions-database',
                                     header: performanceMetrics.storedSimilarities,
-                                    content: 'Paires en base<br><small class=\\'text-muted\\'>Pour cette analyse</small>',
+                                    content: databasePairsContent,
                                     colClass: 'col-lg-6 col-md-6'
                                 }" />
                             </div>
@@ -160,7 +198,7 @@
                         <div class="card-header">
                             <h3 class="card-title mb-0">
                                 <core:icon identifier="flags-multiple" />
-                                Statistiques par langue
+                                <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.language.title" />
                             </h3>
                         </div>
                         <div class="card-body">
@@ -168,9 +206,9 @@
                                 <table class="table table-striped table-hover">
                                     <thead class="table-dark">
                                         <tr>
-                                            <th width="50%">Langue</th>
-                                            <th width="25%" class="text-center">Pages</th>
-                                            <th width="25%" class="text-center">Pourcentage</th>
+                                            <th width="50%"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.language.table.language" /></th>
+                                            <th width="25%" class="text-center"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.language.table.pages" /></th>
+                                            <th width="25%" class="text-center"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.language.table.percentage" /></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -215,7 +253,7 @@
                             </div>
                             <small class="text-muted">
                                 <core:icon identifier="actions-info" size="small" />
-                                Statistiques basées sur les pages ayant au moins une similarité dans l'analyse sélectionnée.
+                                <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.language.help" />
                             </small>
                         </div>
                     </div>
@@ -226,7 +264,7 @@
                         <div class="card-header">
                             <h3 class="card-title mb-0">
                                 <core:icon identifier="actions-move-up" />
-                                Top 5 des paires les plus similaires
+                                <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.top_pairs.title" />
                             </h3>
                         </div>
                         <div class="card-body">
@@ -234,9 +272,9 @@
                                 <table class="table table-striped table-hover">
                                     <thead class="table-dark">
                                         <tr>
-                                            <th width="35%">Page 1</th>
-                                            <th width="35%">Page 2</th>
-                                            <th width="30%" class="text-center">Score de similarité</th>
+                                            <th width="35%"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.top_pairs.page1" /></th>
+                                            <th width="35%"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.top_pairs.page2" /></th>
+                                            <th width="30%" class="text-center"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.top_pairs.similarity_score" /></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -281,7 +319,7 @@
                         <div class="card-header">
                             <h3 class="card-title mb-0">
                                 <core:icon identifier="actions-move-up" />
-                                Top 5 des pages avec le plus de similarités
+                                <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.top_pages.title" />
                             </h3>
                         </div>
                         <div class="card-body">
@@ -289,8 +327,8 @@
                                 <table class="table table-striped table-hover">
                                     <thead class="table-dark">
                                         <tr>
-                                            <th width="70%">Page</th>
-                                            <th width="30%" class="text-center">Nombre de pages similaires</th>
+                                            <th width="70%"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.top_pages.page" /></th>
+                                            <th width="30%" class="text-center"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.top_pages.similar_count" /></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -317,21 +355,27 @@
                         <div class="card-header">
                             <h3 class="card-title mb-0">
                                 <core:icon identifier="actions-chart-pie" />
-                                Statistiques générales
+                                <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.statistics.title" />
                             </h3>
                         </div>
                         <div class="card-body">
                             <div class="row g-3">
+                                <f:variable name="totalPairsContent">
+                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.statistics.total_pairs" /><br><small class='text-muted'><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.statistics.total_pairs.help" /></small>
+                                </f:variable>
                                 <f:render section="Card" arguments="{
                                     icon: 'actions-database',
                                     header: statistics.totalPairs,
-                                    content: 'Paires de similarité<br><small class=\\'text-muted\\'>Stockées au-dessus du seuil</small>',
+                                    content: totalPairsContent,
                                     colClass: 'col-lg-6 col-md-6'
                                 }" />
+                                <f:variable name="totalPagesContent">
+                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.statistics.total_pages" /><br><small class='text-muted'><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.statistics.total_pages.help" /></small>
+                                </f:variable>
                                 <f:render section="Card" arguments="{
                                     icon: 'apps-pagetree-page-default',
                                     header: statistics.totalPages,
-                                    content: 'Pages avec similarités<br><small class=\\'text-muted\\'>Ayant au moins une relation</small>',
+                                    content: totalPagesContent,
                                     colClass: 'col-lg-6 col-md-6'
                                 }" />
                             </div>
@@ -339,30 +383,30 @@
                     </div>
                 </f:if>
 
-                <!-- Footer avec informations utiles -->
+                <!-- Footer with useful information -->
                 <div class="card border-light">
                     <div class="card-body bg-light">
                         <div class="row">
                             <div class="col-md-6">
                                 <h6 class="text-muted">
                                     <core:icon identifier="actions-info" />
-                                    Configuration
+                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.info.configuration" />
                                 </h6>
                                 <small class="text-muted">
-                                    • <strong>Scheduler :</strong> Configure l'analyse (Start Page ID, seuil de stockage)<br>
-                                    • <strong>TypoScript :</strong> Configure l'affichage frontend (seuil d'affichage, nombre max)<br>
-                                    • <strong>Base de données :</strong> Stockage persistant des similarités
+                                    • <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.info.scheduler" /><br>
+                                    • <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.info.typoscript" /><br>
+                                    • <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.info.database" />
                                 </small>
                             </div>
                             <div class="col-md-6">
                                 <h6 class="text-muted">
                                     <core:icon identifier="actions-lightbulb" />
-                                    Conseils
+                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.tips.title" />
                                 </h6>
                                 <small class="text-muted">
-                                    • Exécutez le Scheduler en heures creuses<br>
-                                    • Seuil Scheduler ≤ Seuil TypoScript<br>
-                                    • Surveillez les performances pour les gros sites
+                                    • <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.tips.scheduler" /><br>
+                                    • <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.tips.threshold" /><br>
+                                    • <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.tips.performance" />
                                 </small>
                             </div>
                         </div>

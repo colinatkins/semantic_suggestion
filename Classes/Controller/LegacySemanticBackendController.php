@@ -16,6 +16,7 @@ use TYPO3\CMS\Core\Type\ContextualFeedbackSeverity;
 use Doctrine\DBAL\ParameterType;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
+use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
 class LegacySemanticBackendController extends ActionController
 {
@@ -124,13 +125,13 @@ class LegacySemanticBackendController extends ActionController
             if ($rootPageId <= 0 || empty($availableAnalyses)) {
                 // Utiliser les constantes FlashMessage pour v12
                 $this->addFlashMessage(
-                    'Aucune analyse de similarité trouvée. Veuillez configurer et exécuter la tâche Scheduler "Semantic Suggestion: Generate Similarities".',
-                    'Aucune donnée disponible',
+                    LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.flash.no_analysis_found', 'semantic_suggestion') ?? 'No similarity analysis found. Please configure and run the "Semantic Suggestion: Generate Similarities" scheduler task.',
+                    LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.flash.no_data_available', 'semantic_suggestion') ?? 'No data available',
                     FlashMessage::INFO // Utiliser la constante FlashMessage
                 );
                 
                 $moduleTemplate->assignMultiple([
-                    'errorMessage' => 'Aucune analyse de similarité trouvée.',
+                    'errorMessage' => LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.error.no_analysis.message', 'semantic_suggestion') ?? 'No similarity analysis found. Please configure and run the "Semantic Suggestion: Generate Similarities" scheduler task.',
                     'availableAnalyses' => [],
                     'showStatistics' => true,
                     'showPerformanceMetrics' => true,
@@ -244,8 +245,11 @@ class LegacySemanticBackendController extends ActionController
             
             // Utiliser la constante FlashMessage pour v12
             $this->addFlashMessage(
-                'Une erreur est survenue lors du chargement du module. Consultez les logs: ' . $e->getMessage(),
-                'Erreur',
+                sprintf(
+                    LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.flash.module_error', 'semantic_suggestion') ?? 'An error occurred while loading the module. Check the logs: %s',
+                    $e->getMessage()
+                ),
+                LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.flash.error', 'semantic_suggestion') ?? 'Error',
                 FlashMessage::ERROR // Utiliser la constante FlashMessage
             );
 
@@ -254,7 +258,7 @@ class LegacySemanticBackendController extends ActionController
             
             $moduleTemplate->assignMultiple([
                 'flashMessages' => $flashMessages,
-                'errorMessage' => 'Une erreur est survenue lors du chargement du module.',
+                'errorMessage' => LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.error.no_analysis.message', 'semantic_suggestion') ?? 'An error occurred while loading the module.',
                 'availableAnalyses' => [],
                 'showStatistics' => true,
                 'showPerformanceMetrics' => true,

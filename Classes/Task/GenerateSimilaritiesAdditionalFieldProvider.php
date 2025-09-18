@@ -10,6 +10,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Scheduler\AbstractAdditionalFieldProvider;
 use TYPO3\CMS\Scheduler\Controller\SchedulerModuleController;
 use TYPO3\CMS\Scheduler\Task\AbstractTask;
+use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
 class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFieldProvider
 {
@@ -33,7 +34,7 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
         $fieldCode = '<input type="number" class="form-control" name="tx_scheduler[startPageId]" id="' . $fieldId . '" value="' . (int)$taskInfo['startPageId'] . '" />';
         $additionalFields[$fieldId] = [
             'code' => $fieldCode,
-            'label' => 'Start Page ID (Point de départ de l\'analyse)',
+            'label' => LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.task.start_page_id', 'semantic_suggestion') ?? 'Start Page ID (Analysis starting point)',
             'cshKey' => '_MOD_system_txschedulerM1',
             'cshLabel' => $fieldId
         ];
@@ -51,17 +52,17 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
         $fieldCode = '<input type="text" class="form-control" name="tx_scheduler[excludePages]" id="' . $fieldId . '" value="' . htmlspecialchars($taskInfo['excludePages']) . '" placeholder="ex: 42,56,78" />';
         $additionalFields[$fieldId] = [
             'code' => $fieldCode,
-            'label' => 'Pages à exclure (séparées par des virgules)',
+            'label' => LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.task.exclude_pages', 'semantic_suggestion') ?? 'Pages to exclude (comma separated)',
             'cshKey' => '_MOD_system_txschedulerM1',
             'cshLabel' => $fieldId
         ];
         
-        // NOUVEAU : Champ pour recursiveExclusion
+        // NEW: Field for recursiveExclusion
         if (!isset($taskInfo['recursiveExclusion'])) {
             if ($task instanceof GenerateSimilaritiesTask) {
                 $taskInfo['recursiveExclusion'] = $task->recursiveExclusion;
             } else {
-                $taskInfo['recursiveExclusion'] = true; // Par défaut : récursif
+                $taskInfo['recursiveExclusion'] = true; // Default: recursive
             }
         }
         
@@ -70,17 +71,16 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
         $fieldCode = '<div class="form-check">
             <input type="checkbox" class="form-check-input" name="tx_scheduler[recursiveExclusion]" id="' . $fieldId . '" value="1" ' . $checked . ' />
             <label class="form-check-label" for="' . $fieldId . '">
-                Exclure récursivement les sous-pages
+                ' . (LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.task.recursive_exclusion.help', 'semantic_suggestion') ?? 'Exclude recursively sub-pages') . '
             </label>
         </div>
         <small class="form-text text-muted">
-            Si coché : exclure la page ET toutes ses sous-pages<br>
-            Si décoché : exclure seulement la page, mais analyser ses sous-pages
+            ' . (LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.task.recursive_exclusion.description', 'semantic_suggestion') ?? 'If checked: exclude the page AND all its sub-pages<br>If unchecked: exclude only the page, but analyze its sub-pages') . '
         </small>';
         
         $additionalFields[$fieldId] = [
             'code' => $fieldCode,
-            'label' => 'Exclusion récursive',
+            'label' => LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.task.recursive_exclusion', 'semantic_suggestion') ?? 'Recursive exclusion',
             'cshKey' => '_MOD_system_txschedulerM1',
             'cshLabel' => $fieldId
         ];
@@ -98,7 +98,7 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
         $fieldCode = '<input type="number" class="form-control" name="tx_scheduler[minimumSimilarity]" id="' . $fieldId . '" value="' . number_format((float)$taskInfo['minimumSimilarity'], 2) . '" step="0.01" min="0" max="1" />';
         $additionalFields[$fieldId] = [
             'code' => $fieldCode,
-            'label' => 'Seuil minimum de similarité (0-1)',
+            'label' => LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.task.minimum_similarity', 'semantic_suggestion') ?? 'Minimum similarity threshold (0-1)',
             'cshKey' => '_MOD_system_txschedulerM1',
             'cshLabel' => $fieldId
         ];
@@ -116,7 +116,7 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
         // Validation de startPageId
         if ((int)$submittedData['startPageId'] <= 0) {
             $schedulerModule->addMessage(
-                'L\'ID de la page de départ doit être un nombre entier positif.',
+                LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.validation.invalid_start_page', 'semantic_suggestion') ?? 'The start page ID must be a positive integer.',
                 FlashMessage::ERROR
             );
             $result = false;
@@ -126,7 +126,7 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
         $minimumSimilarity = (float)$submittedData['minimumSimilarity'];
         if ($minimumSimilarity < 0 || $minimumSimilarity > 1) {
             $schedulerModule->addMessage(
-                'Le seuil de similarité doit être une valeur entre 0 et 1.',
+                LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.validation.invalid_similarity', 'semantic_suggestion') ?? 'The similarity threshold must be a value between 0 and 1.',
                 FlashMessage::ERROR
             );
             $result = false;
@@ -138,7 +138,7 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
             foreach ($excludePages as $pageId) {
                 if (!is_numeric($pageId) || (int)$pageId <= 0) {
                     $schedulerModule->addMessage(
-                        'La liste des pages à exclure doit contenir uniquement des ID de pages valides (nombres entiers positifs).',
+                        LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.validation.invalid_exclude_pages', 'semantic_suggestion') ?? 'The exclude pages list must contain only valid page IDs (positive integers).',
                         FlashMessage::ERROR
                     );
                     $result = false;
@@ -147,8 +147,8 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
             }
         }
         
-        // Validation de recursiveExclusion : pas de validation spécifique nécessaire
-        // car c'est un booléen géré par la checkbox
+        // Validation of recursiveExclusion: no specific validation needed
+        // as it's a boolean handled by checkbox
         
         return $result;
     }
@@ -162,7 +162,7 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
             $task->startPageId = (int)$submittedData['startPageId'];
             $task->excludePages = $submittedData['excludePages'];
             $task->minimumSimilarity = (float)$submittedData['minimumSimilarity'];
-            // Gestion de la checkbox : si pas présente dans $_POST, elle est décochée
+            // Handle checkbox: if not present in $_POST, it's unchecked
             $task->recursiveExclusion = isset($submittedData['recursiveExclusion']) && $submittedData['recursiveExclusion'] === '1';
         }
     }

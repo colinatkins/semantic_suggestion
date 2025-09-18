@@ -15,29 +15,30 @@ use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
 use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
 class GenerateSimilaritiesTask extends AbstractTask
 {
     /**
-     * ID de la page de départ pour l'analyse
+     * Starting page ID for analysis
      * @var int
      */
     public $startPageId = 1;
     
     /**
-     * Liste des pages à exclure (format: "42,56,78")
+     * List of pages to exclude (format: "42,56,78")
      * @var string
      */
     public $excludePages = '';
     
     /**
-     * Seuil minimum de similarité pour enregistrer en BDD
+     * Minimum similarity threshold to save in database
      * @var float
      */
     public $minimumSimilarity = 0.1; // Ajusté pour TF-IDF (scores plus bas)
     
     /**
-     * Détermine si l'exclusion est récursive ou non
+     * Determines if exclusion is recursive or not
      * @var bool
      */
     public $recursiveExclusion = true;
@@ -56,7 +57,7 @@ class GenerateSimilaritiesTask extends AbstractTask
     }
 
     /**
-     * Initialise les dépendances nécessaires
+     * Initialize necessary dependencies
      */
     protected function initializeDependencies(): void
     {
@@ -68,7 +69,7 @@ class GenerateSimilaritiesTask extends AbstractTask
     }
 
     /**
-     * Exécute la tâche planifiée
+     * Execute the scheduled task
      */
     public function execute(): bool
     {
@@ -80,12 +81,12 @@ class GenerateSimilaritiesTask extends AbstractTask
                 'recursiveExclusion' => $this->recursiveExclusion
             ]);
 
-            // Convertir la liste de pages exclues en tableau
+            // Convert exclude pages list to array
             $excludePages = !empty($this->excludePages) 
                 ? GeneralUtility::intExplode(',', $this->excludePages, true) 
                 : [];
             
-            // Récupérer toutes les pages à partir du startPageId
+            // Retrieve all pages from startPageId
             $pages = $this->getPages($this->startPageId, 999, 0, $excludePages);
 
             if (empty($pages)) {
@@ -95,7 +96,7 @@ class GenerateSimilaritiesTask extends AbstractTask
                 return true; // Retourner true car la tâche s'est exécutée correctement, même sans données
             }
 
-            // Analyse pour chaque langue
+            // Analysis for each language
             $siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
             $site = $siteFinder->getSiteByPageId($this->startPageId);
             
@@ -107,10 +108,10 @@ class GenerateSimilaritiesTask extends AbstractTask
                     'language' => $languageId
                 ]);
 
-                // Analyser les similitudes
+                // Analyze similarities
                 $analysisData = $this->pageAnalysisService->analyzePages($pages, $languageId);
 
-                // Sauvegarder les résultats
+                // Save results
                 $this->saveResults($analysisData, $this->startPageId, $languageId, $this->minimumSimilarity);
             }
 
@@ -127,14 +128,14 @@ class GenerateSimilaritiesTask extends AbstractTask
     }
 
     /**
-     * Récupère récursivement les pages à partir de l'ID parent
+     * Recursively retrieve pages from parent ID
      */
     protected function getPages(int $parentPageId, int $depth, int $languageId, array $excludePages = []): array
     {
         $allPages = [];
         
         try {
-            // Récupérer les pages directement sous le parent
+            // Retrieve pages directly under parent
             $pages = $this->pageRepository->getMenu(
                 $parentPageId,
                 '*',
@@ -146,29 +147,29 @@ class GenerateSimilaritiesTask extends AbstractTask
             );
             
             foreach ($pages as $page) {
-                // Vérifier si la page est exclue
+                // Check if page is excluded
                 $isExcluded = in_array($page['uid'], $excludePages);
                 
                 if ($isExcluded) {
-                    // Si l'exclusion n'est pas récursive, on continue quand même 
-                    // pour analyser les sous-pages SANS les exclure
+                    // If exclusion is not recursive, continue anyway 
+                    // to analyze sub-pages WITHOUT excluding them
                     if (!$this->recursiveExclusion && $depth > 1) {
-                        // IMPORTANT : On ne passe pas $excludePages pour les sous-pages
-                        // car on veut seulement exclure la page courante, pas ses enfants
+                        // IMPORTANT: Don't pass $excludePages for sub-pages
+                        // because we only want to exclude current page, not its children
                         $subPages = $this->getPages($page['uid'], $depth - 1, $languageId, []);
                         $allPages = array_merge($allPages, $subPages);
                     }
-                    // Dans tous les cas, on ignore la page courante
+                    // In all cases, ignore current page
                     continue;
                 }
                 
-                // Ajouter la page si elle n'est pas exclue
+                // Add page if not excluded
                 $allPages[$page['uid']] = $page;
                 $allPages[$page['uid']]['sys_language_uid'] = $languageId;
                 
-                // Descendre récursivement si la profondeur le permet
+                // Recurse if depth allows
                 if ($depth > 1) {
-                    // Pour les pages non-exclues, on continue avec la liste complète des exclusions
+                    // For non-excluded pages, continue with complete exclusion list
                     $subPages = $this->getPages($page['uid'], $depth - 1, $languageId, $excludePages);
                     $allPages = array_merge($allPages, $subPages);
                 }
@@ -188,20 +189,20 @@ class GenerateSimilaritiesTask extends AbstractTask
 
 
     /**
-     * Sauvegarde les résultats d'analyse en base de données
+     * Save analysis results to database
      */
     protected function saveResults(array $analysisData, int $rootPageId, int $languageId, float $proximityThreshold): void
     {
         $connection = $this->connectionPool->getConnectionForTable('tx_semanticsuggestion_similarities');
         
         try {
-            // Commencer une transaction
+            // Begin transaction
             $connection->beginTransaction();
             
-            // Supprimer les anciennes entrées pour ce site et cette langue
+            // Delete old entries for this site and language
             $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
             
-            // Version compatible TYPO3 v12 et v13
+            // TYPO3 v12 and v13 compatible version
             $queryBuilder
                 ->delete('tx_semanticsuggestion_similarities')
                 ->where(
@@ -210,7 +211,7 @@ class GenerateSimilaritiesTask extends AbstractTask
                 )
                 ->executeStatement();
             
-            // Préparer les insertions en lots
+            // Prepare bulk insertions
             $bulkInserts = [];
             $now = time();
             
@@ -224,7 +225,7 @@ class GenerateSimilaritiesTask extends AbstractTask
             }
             
             foreach ($pageData['similarities'] as $similarPageId => $similarity) {
-                    // Ne stocker que les similarités au-dessus du seuil
+                    // Only store similarities above threshold
                     if ($similarity['score'] >= $proximityThreshold) {
                         $bulkInserts[] = [
                             'page_id' => $pageId,
@@ -237,7 +238,7 @@ class GenerateSimilaritiesTask extends AbstractTask
                         ];
                     }
                     
-                    // Insérer par lots pour optimiser les performances
+                    // Insert in batches to optimize performance
                     if (count($bulkInserts) >= 100) {
                         $this->bulkInsert($bulkInserts);
                         $bulkInserts = [];
@@ -245,12 +246,12 @@ class GenerateSimilaritiesTask extends AbstractTask
                 }
             }
             
-            // Insérer les enregistrements restants
+            // Insert remaining records
             if (!empty($bulkInserts)) {
                 $this->bulkInsert($bulkInserts);
             }
             
-            // Valider la transaction
+            // Commit transaction
             $connection->commit();
             
             $this->logger->info('Similarities saved to database', [
@@ -259,11 +260,11 @@ class GenerateSimilaritiesTask extends AbstractTask
                 'similaritiesCount' => count($bulkInserts)
             ]);
             
-            // Vider le cache pour ce site
+            // Clear cache for this site
             $this->cacheManager->getCache('semantic_suggestion')->flushByTag('site_' . $rootPageId);
             
         } catch (\Exception $e) {
-            // Annuler la transaction en cas d'erreur
+            // Rollback transaction on error
             if ($connection->isTransactionActive()) {
                 $connection->rollBack();
             }
@@ -279,7 +280,7 @@ class GenerateSimilaritiesTask extends AbstractTask
     }
 
     /**
-     * Effectue une insertion en lot dans la table des similarités
+     * Perform bulk insert into similarities table
      */
     protected function bulkInsert(array $records): void
     {
@@ -289,7 +290,7 @@ class GenerateSimilaritiesTask extends AbstractTask
         
         $connection = $this->connectionPool->getConnectionForTable('tx_semanticsuggestion_similarities');
         
-        // Utiliser bulkInsert pour une meilleure performance
+        // Use bulkInsert for better performance
         $connection->bulkInsert(
             'tx_semanticsuggestion_similarities',
             $records,
@@ -298,31 +299,40 @@ class GenerateSimilaritiesTask extends AbstractTask
     }
 
     /**
-     * Retourne des informations supplémentaires à afficher dans la liste des tâches du scheduler
+     * Returns additional information to display in the scheduler task list
      */
     public function getAdditionalInformation(): string
     {
         $info = [];
-        
-        // Ajouter l'ID de la page de départ
-        $info[] = '📄 Page de départ: ' . $this->startPageId;
-        
-        // Ajouter les pages exclues si définies
+
+        // Add start page ID
+        $startPageLabel = LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.info.start_page', 'semantic_suggestion') ?? 'Start page';
+        $info[] = '📄 ' . $startPageLabel . ': ' . $this->startPageId;
+
+        // Add excluded pages if defined
+        $excludedPagesLabel = LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.info.excluded_pages', 'semantic_suggestion') ?? 'Excluded pages';
         if (!empty($this->excludePages)) {
             $excludeList = GeneralUtility::trimExplode(',', $this->excludePages, true);
-            $info[] = '🚫 Pages exclues: ' . implode(', ', $excludeList) . ' (' . count($excludeList) . ')';
+            $info[] = '🚫 ' . $excludedPagesLabel . ': ' . implode(', ', $excludeList) . ' (' . count($excludeList) . ')';
         } else {
-            $info[] = '🚫 Pages exclues: aucune';
+            $noneLabel = LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.info.none', 'semantic_suggestion') ?? 'none';
+            $info[] = '🚫 ' . $excludedPagesLabel . ': ' . $noneLabel;
         }
-        
-        // Ajouter l'exclusion récursive
+
+        // Add recursive exclusion
+        $exclusionLabel = LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.info.exclusion', 'semantic_suggestion') ?? 'Exclusion';
         $recursiveIcon = $this->recursiveExclusion ? '🔄' : '📄';
-        $recursiveText = $this->recursiveExclusion ? 'Récursive' : 'Page seule';
-        $info[] = $recursiveIcon . ' Exclusion: ' . $recursiveText;
-        
-        // Ajouter le seuil de similarité
-        $info[] = '📊 Seuil minimum: ' . number_format($this->minimumSimilarity, 2);
-        
+        if ($this->recursiveExclusion) {
+            $recursiveText = LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.info.recursive', 'semantic_suggestion') ?? 'Recursive';
+        } else {
+            $recursiveText = LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.info.page_only', 'semantic_suggestion') ?? 'Page only';
+        }
+        $info[] = $recursiveIcon . ' ' . $exclusionLabel . ': ' . $recursiveText;
+
+        // Add similarity threshold
+        $thresholdLabel = LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.info.minimum_threshold', 'semantic_suggestion') ?? 'Minimum threshold';
+        $info[] = '📊 ' . $thresholdLabel . ': ' . number_format($this->minimumSimilarity, 2);
+
         return implode(' | ', $info);
     }
 }

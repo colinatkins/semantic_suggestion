@@ -246,6 +246,60 @@
             <trans-unit id="backend.flash.error">
                 <source>Error</source>
             </trans-unit>
+
+            <!-- Scheduler Task Translations -->
+            <trans-unit id="scheduler.task.start_page_id">
+                <source>Start Page ID (Analysis starting point)</source>
+            </trans-unit>
+            <trans-unit id="scheduler.task.exclude_pages">
+                <source>Pages to exclude (comma separated)</source>
+            </trans-unit>
+            <trans-unit id="scheduler.task.recursive_exclusion">
+                <source>Recursive exclusion</source>
+            </trans-unit>
+            <trans-unit id="scheduler.task.recursive_exclusion.help">
+                <source>Exclude recursively sub-pages</source>
+            </trans-unit>
+            <trans-unit id="scheduler.task.recursive_exclusion.description">
+                <source>If checked: exclude the page AND all its sub-pages<br>If unchecked: exclude only the page, but analyze its sub-pages</source>
+            </trans-unit>
+            <trans-unit id="scheduler.task.minimum_similarity">
+                <source>Minimum similarity threshold (0-1)</source>
+            </trans-unit>
+
+            <!-- Scheduler Validation Messages -->
+            <trans-unit id="scheduler.validation.invalid_start_page">
+                <source>The start page ID must be a positive integer.</source>
+            </trans-unit>
+            <trans-unit id="scheduler.validation.invalid_similarity">
+                <source>The similarity threshold must be a value between 0 and 1.</source>
+            </trans-unit>
+            <trans-unit id="scheduler.validation.invalid_exclude_pages">
+                <source>The exclude pages list must contain only valid page IDs (positive integers).</source>
+            </trans-unit>
+
+            <!-- Scheduler Additional Information -->
+            <trans-unit id="scheduler.info.start_page">
+                <source>Start page</source>
+            </trans-unit>
+            <trans-unit id="scheduler.info.excluded_pages">
+                <source>Excluded pages</source>
+            </trans-unit>
+            <trans-unit id="scheduler.info.none">
+                <source>none</source>
+            </trans-unit>
+            <trans-unit id="scheduler.info.exclusion">
+                <source>Exclusion</source>
+            </trans-unit>
+            <trans-unit id="scheduler.info.recursive">
+                <source>Recursive</source>
+            </trans-unit>
+            <trans-unit id="scheduler.info.page_only">
+                <source>Page only</source>
+            </trans-unit>
+            <trans-unit id="scheduler.info.minimum_threshold">
+                <source>Minimum threshold</source>
+            </trans-unit>
         </body>
     </file>
 </xliff>

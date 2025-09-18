@@ -25,12 +25,17 @@ plugin.tx_semanticsuggestion_suggestions {
     
     # Main settings for the Semantic Suggestion functionality
     settings {
+        # NEW: Unified Quality Configuration
+        qualityLevel = {$plugin.tx_semanticsuggestion_suggestions.settings.qualityLevel}
+
         # Frontend Display Settings
-        proximityThreshold = {$plugin.tx_semanticsuggestion_suggestions.settings.proximityThreshold}
         maxSuggestions = {$plugin.tx_semanticsuggestion_suggestions.settings.maxSuggestions}
         excludePages = {$plugin.tx_semanticsuggestion_suggestions.settings.excludePages}
         excerptLength = {$plugin.tx_semanticsuggestion_suggestions.settings.excerptLength}
         debugMode = {$plugin.tx_semanticsuggestion_suggestions.settings.debugMode}
+
+        # Legacy support (backward compatibility)
+        proximityThreshold = {$plugin.tx_semanticsuggestion_suggestions.settings.proximityThreshold}
 
         # Backend Module Display Settings
         showStatistics = {$plugin.tx_semanticsuggestion_suggestions.settings.showStatistics}
@@ -61,10 +66,23 @@ plugin.tx_semanticsuggestion_suggestions {
         minTextLength = 50
         confidenceThreshold = 0.3
         
-        # Seuils ajustés pour TF-IDF (plus bas car TF-IDF génère des scores plus faibles)
-        proximityThreshold = 0.15
-        
-        # Debug temporaire pour diagnostiquer l'allemand
+        # ========================================
+        # UNIFIED QUALITY CONFIGURATION (v3.1+)
+        # ========================================
+        # qualityLevel replaces the old proximityThreshold/minimumSimilarity split:
+        # - Storage Threshold = qualityLevel - 0.1 (broad storage for flexibility)
+        # - Display Threshold = qualityLevel (quality suggestions shown to users)
+        # - Single parameter to maintain, no more complex hierarchy
+
+        # TF-IDF optimized values:
+        qualityLevel = 0.3           # Standard sites
+        # qualityLevel = 0.25        # German sites (compound words)
+        # qualityLevel = 0.4         # High-quality only sites
+
+        # Legacy support (automatically computed from qualityLevel)
+        proximityThreshold = 0.3     # Fallback for old templates
+
+        # Debug
         debugMode = 0
     }
 }

@@ -39,9 +39,16 @@ class SuggestionService
     {
         $parentPageId = isset($controllerSettings['parentPageId']) ? (int)$controllerSettings['parentPageId'] : 0;
         $depth = isset($controllerSettings['recursive']) ? (int)$controllerSettings['recursive'] : 0;
-        $proximityThreshold = isset($controllerSettings['proximityThreshold']) ? (float)$controllerSettings['proximityThreshold'] : 0.3;
+
+        // NEW: Unified quality configuration
+        $qualityLevel = $this->getQualityLevel($controllerSettings);
+        $displayThreshold = $qualityLevel; // Display at quality level
+
+        // Legacy support for proximityThreshold (fallback)
+        $proximityThreshold = $displayThreshold;
+
         $excludePages = GeneralUtility::intExplode(',', $controllerSettings['excludePages'] ?? '', true);
-        $maxSuggestions = isset($controllerSettings['maxSuggestions']) ? (int)$controllerSettings['maxSuggestions'] : 3; // Default to 3 if not set
+        $maxSuggestions = isset($controllerSettings['maxSuggestions']) ? (int)$controllerSettings['maxSuggestions'] : 3;
         $excerptLength = isset($controllerSettings['excerptLength']) ? (int)$controllerSettings['excerptLength'] : 150;
         $currentLanguageUid = $this->utility->getCurrentLanguageUid();
 
@@ -118,7 +125,13 @@ class SuggestionService
             'itemsPerPage' => $itemsPerPage
         ]);
 
-        $proximityThreshold = (float)($this->settings['proximityThreshold'] ?? 0.3);
+        // NEW: Unified quality configuration
+        $qualityLevel = $this->getQualityLevel($this->settings);
+        $displayThreshold = $qualityLevel; // Display at quality level
+
+        // Legacy support
+        $proximityThreshold = $displayThreshold;
+
         $maxSuggestions = (int)($this->settings['maxSuggestions'] ?? 3);
         $currentLanguageUid = $this->utility->getCurrentLanguageUid();
         $excludePages = GeneralUtility::intExplode(',', $this->settings['excludePages'] ?? '', true);
@@ -398,5 +411,32 @@ class SuggestionService
         }
         $this->utility->logDebug('Retrieved pages', ['pages' => $pages]);
         return $pages;
+    }
+
+    /**
+     * Get quality level from settings with backward compatibility
+     */
+    protected function getQualityLevel(array $settings): float
+    {
+        // NEW: Quality level (unified configuration)
+        if (isset($settings['qualityLevel'])) {
+            return (float)$settings['qualityLevel'];
+        }
+
+        // Legacy support: use proximityThreshold if available
+        if (isset($settings['proximityThreshold'])) {
+            return (float)$settings['proximityThreshold'];
+        }
+
+        // Default quality level for TF-IDF
+        return 0.3;
+    }
+
+    /**
+     * Get storage threshold from quality level (for scheduler tasks)
+     */
+    protected function getStorageThreshold(float $qualityLevel): float
+    {
+        return max(0.05, $qualityLevel - 0.1);
     }
 }

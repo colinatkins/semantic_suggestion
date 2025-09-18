@@ -32,10 +32,20 @@ class GenerateSimilaritiesTask extends AbstractTask
     public $excludePages = '';
     
     /**
-     * Minimum similarity threshold to save in database
+     * Quality level for suggestions (0.0-1.0)
+     * This replaces the old minimumSimilarity/proximityThreshold split
+     * Storage threshold = qualityLevel - 0.1 (permissive storage)
+     * Display threshold = qualityLevel (quality display)
      * @var float
      */
-    public $minimumSimilarity = 0.1; // Ajusté pour TF-IDF (scores plus bas)
+    public $qualityLevel = 0.3;
+
+    /**
+     * Legacy support: Minimum similarity threshold to save in database
+     * @deprecated Will be removed in v4.0 - use qualityLevel instead
+     * @var float
+     */
+    public $minimumSimilarity = 0.1;
     
     /**
      * Determines if exclusion is recursive or not
@@ -54,6 +64,28 @@ class GenerateSimilaritiesTask extends AbstractTask
     {
         parent::__construct();
         $this->logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
+
+        // Ensure backward compatibility and migration logic
+        $this->initializeQualityLevel();
+    }
+
+    /**
+     * Initialize quality level from legacy parameters if needed
+     */
+    public function initializeQualityLevel(): void
+    {
+        // If qualityLevel is at default but minimumSimilarity was customized
+        if ($this->qualityLevel === 0.3 && $this->minimumSimilarity !== 0.1) {
+            // Migrate from legacy minimumSimilarity
+            $this->qualityLevel = max(0.1, $this->minimumSimilarity + 0.1);
+            $this->logger->info('Migrated from legacy minimumSimilarity', [
+                'legacy' => $this->minimumSimilarity,
+                'qualityLevel' => $this->qualityLevel
+            ]);
+        }
+
+        // Always sync minimumSimilarity with qualityLevel for backward compatibility
+        $this->minimumSimilarity = max(0.05, $this->qualityLevel - 0.1);
     }
 
     /**
@@ -77,7 +109,8 @@ class GenerateSimilaritiesTask extends AbstractTask
             $this->initializeDependencies();
             $this->logger->info('Starting similarity generation task', [
                 'startPageId' => $this->startPageId,
-                'minimumSimilarity' => $this->minimumSimilarity,
+                'qualityLevel' => $this->qualityLevel,
+                'storageThreshold' => $this->minimumSimilarity,
                 'recursiveExclusion' => $this->recursiveExclusion
             ]);
 
@@ -329,9 +362,13 @@ class GenerateSimilaritiesTask extends AbstractTask
         }
         $info[] = $recursiveIcon . ' ' . $exclusionLabel . ': ' . $recursiveText;
 
-        // Add similarity threshold
-        $thresholdLabel = LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.info.minimum_threshold', 'semantic_suggestion') ?? 'Minimum threshold';
-        $info[] = '📊 ' . $thresholdLabel . ': ' . number_format($this->minimumSimilarity, 2);
+        // Add quality level (unified configuration)
+        $qualityLabel = LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.info.quality_level', 'semantic_suggestion') ?? 'Quality Level';
+        $info[] = '🎯 ' . $qualityLabel . ': ' . number_format($this->qualityLevel, 2);
+
+        // Storage threshold (computed)
+        $storageLabel = LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.info.storage_threshold', 'semantic_suggestion') ?? 'Storage Threshold';
+        $info[] = '💾 ' . $storageLabel . ': ' . number_format($this->minimumSimilarity, 2);
 
         return implode(' | ', $info);
     }

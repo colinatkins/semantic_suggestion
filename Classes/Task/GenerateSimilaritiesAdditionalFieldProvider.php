@@ -85,23 +85,44 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
             'cshLabel' => $fieldId
         ];
         
-        // Champ pour minimumSimilarity
+        // NEW: Quality Level (unified configuration)
+        if (!isset($taskInfo['qualityLevel'])) {
+            if ($task instanceof GenerateSimilaritiesTask) {
+                $taskInfo['qualityLevel'] = $task->qualityLevel;
+            } else {
+                $taskInfo['qualityLevel'] = 0.3; // Default quality level
+            }
+        }
+
+        $fieldId = 'task_qualityLevel';
+        $storageThreshold = max(0.05, (float)$taskInfo['qualityLevel'] - 0.1);
+        $displayThreshold = (float)$taskInfo['qualityLevel'];
+
+        $fieldCode = '<div class="form-group">
+            <input type="number" class="form-control" name="tx_scheduler[qualityLevel]" id="' . $fieldId . '" value="' . number_format($displayThreshold, 2) . '" step="0.01" min="0.1" max="1" />
+            <small class="form-text text-muted">
+                <strong>📊 Unified Configuration:</strong><br>
+                • Storage Threshold: ' . number_format($storageThreshold, 2) . ' (stores broad range for flexibility)<br>
+                • Display Threshold: ' . number_format($displayThreshold, 2) . ' (shows quality suggestions)<br>
+                • Replaces old minimumSimilarity/proximityThreshold split
+            </small>
+        </div>';
+
+        $additionalFields[$fieldId] = [
+            'code' => $fieldCode,
+            'label' => LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.task.quality_level', 'semantic_suggestion') ?? 'Quality Level (0.1-1.0) - Unified threshold for storage and display',
+            'cshKey' => '_MOD_system_txschedulerM1',
+            'cshLabel' => $fieldId
+        ];
+
+        // Legacy support: minimumSimilarity (hidden, computed from qualityLevel)
         if (!isset($taskInfo['minimumSimilarity'])) {
             if ($task instanceof GenerateSimilaritiesTask) {
                 $taskInfo['minimumSimilarity'] = $task->minimumSimilarity;
             } else {
-                $taskInfo['minimumSimilarity'] = 0.1; // Valeur par défaut ajustée pour TF-IDF
+                $taskInfo['minimumSimilarity'] = max(0.05, (float)$taskInfo['qualityLevel'] - 0.1);
             }
         }
-        
-        $fieldId = 'task_minimumSimilarity';
-        $fieldCode = '<input type="number" class="form-control" name="tx_scheduler[minimumSimilarity]" id="' . $fieldId . '" value="' . number_format((float)$taskInfo['minimumSimilarity'], 2) . '" step="0.01" min="0" max="1" />';
-        $additionalFields[$fieldId] = [
-            'code' => $fieldCode,
-            'label' => LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.task.minimum_similarity', 'semantic_suggestion') ?? 'Minimum similarity threshold (0-1)',
-            'cshKey' => '_MOD_system_txschedulerM1',
-            'cshLabel' => $fieldId
-        ];
         
         return $additionalFields;
     }
@@ -122,14 +143,26 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
             $result = false;
         }
         
-        // Validation de minimumSimilarity
-        $minimumSimilarity = (float)$submittedData['minimumSimilarity'];
-        if ($minimumSimilarity < 0 || $minimumSimilarity > 1) {
+        // Validation de qualityLevel
+        $qualityLevel = isset($submittedData['qualityLevel']) ? (float)$submittedData['qualityLevel'] : 0.3;
+        if ($qualityLevel < 0.1 || $qualityLevel > 1) {
             $schedulerModule->addMessage(
-                LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.validation.invalid_similarity', 'semantic_suggestion') ?? 'The similarity threshold must be a value between 0 and 1.',
+                LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.validation.invalid_quality_level', 'semantic_suggestion') ?? 'The quality level must be between 0.1 and 1.0.',
                 FlashMessage::ERROR
             );
             $result = false;
+        }
+
+        // Legacy validation: minimumSimilarity (computed, no user input needed)
+        if (isset($submittedData['minimumSimilarity'])) {
+            $minimumSimilarity = (float)$submittedData['minimumSimilarity'];
+            if ($minimumSimilarity < 0 || $minimumSimilarity > 1) {
+                $schedulerModule->addMessage(
+                    LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.validation.invalid_similarity', 'semantic_suggestion') ?? 'The similarity threshold must be a value between 0 and 1.',
+                    FlashMessage::ERROR
+                );
+                $result = false;
+            }
         }
         
         // Validation de excludePages
@@ -161,7 +194,18 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
         if ($task instanceof GenerateSimilaritiesTask) {
             $task->startPageId = (int)$submittedData['startPageId'];
             $task->excludePages = $submittedData['excludePages'];
-            $task->minimumSimilarity = (float)$submittedData['minimumSimilarity'];
+
+            // NEW: Quality Level (unified configuration)
+            if (isset($submittedData['qualityLevel'])) {
+                $task->qualityLevel = (float)$submittedData['qualityLevel'];
+                // Auto-compute minimumSimilarity for backward compatibility
+                $task->minimumSimilarity = max(0.05, $task->qualityLevel - 0.1);
+            } elseif (isset($submittedData['minimumSimilarity'])) {
+                // Legacy support: if only minimumSimilarity provided
+                $task->minimumSimilarity = (float)$submittedData['minimumSimilarity'];
+                $task->qualityLevel = min(1.0, $task->minimumSimilarity + 0.1);
+            }
+
             // Handle checkbox: if not present in $_POST, it's unchecked
             $task->recursiveExclusion = isset($submittedData['recursiveExclusion']) && $submittedData['recursiveExclusion'] === '1';
         }

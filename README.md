@@ -272,36 +272,57 @@ if (in_array($language, ['de', 'fr', 'en', 'es'])) {
 
 ### 🎯 **Language-Specific Configuration Examples**
 
-#### German Sites (Maximum Performance)
+#### 🇩🇪 German Sites (Maximum Performance)
 ```typoscript
+# Scheduler Configuration: minimumSimilarity = 0.15
 plugin.tx_semanticsuggestion_suggestions.settings {
-    enableStemming = 1                # Enable compound word processing
-    proximityThreshold = 0.25         # Lower threshold (compound words create more matches)
+    enableStemming = 1                # CRITICAL for compound words
+    proximityThreshold = 0.25         # Lower threshold (compound matching)
+    minTextLength = 50                # German compound words in short text
+
     analyzedFields {
-        title = 2.0                   # German titles often contain key compounds
-        keywords = 2.5                # German keywords are highly specific
+        title = 2.0                   # German titles contain key compounds
+        keywords = 2.5                # German keywords very specific
+        content = 1.0                 # Standard weight
+        description = 1.2             # Meta descriptions useful
+        abstract = 1.3                # German abstracts well-structured
     }
 }
 ```
 
-#### French/English/Spanish Sites  
+#### 🇫🇷🇬🇧🇪🇸 French/English/Spanish Sites
 ```typoscript
+# Scheduler Configuration: minimumSimilarity = 0.2
 plugin.tx_semanticsuggestion_suggestions.settings {
-    enableStemming = 1                # Enable advanced stemming
-    proximityThreshold = 0.3          # Standard threshold
+    enableStemming = 1                # Advanced stemming available
+    proximityThreshold = 0.3          # Standard TF-IDF threshold
+    minTextLength = 50                # Standard minimum length
+
     analyzedFields {
-        title = 1.5
-        keywords = 2.0
+        title = 1.5                   # Titles important but less compound
+        keywords = 2.0                # Keywords still highly relevant
+        content = 1.0                 # Main content
+        description = 1.0             # Meta descriptions
+        abstract = 1.1                # Abstracts helpful
     }
 }
 ```
 
-#### Other Languages (Italian, Portuguese, etc.)
+#### 🇮🇹🇵🇹🇳🇱 Other Languages (Italian, Portuguese, Dutch, etc.)
 ```typoscript
+# Scheduler Configuration: minimumSimilarity = 0.25
 plugin.tx_semanticsuggestion_suggestions.settings {
-    enableStemming = 0                # No stemming available, but still gets TF-IDF
-    proximityThreshold = 0.35         # Slightly higher threshold
-    minTextLength = 100               # Longer text for better TF-IDF accuracy
+    enableStemming = 0                # No advanced stemming, but TF-IDF still helps
+    proximityThreshold = 0.35         # Higher threshold (less precise without stemming)
+    minTextLength = 100               # Longer text needed for TF-IDF accuracy
+
+    analyzedFields {
+        title = 1.8                   # Rely more on titles without stemming
+        keywords = 2.2                # Keywords become more important
+        content = 0.8                 # Content less reliable without stemming
+        description = 1.0             # Standard weight
+        abstract = 1.0                # Standard weight
+    }
 }
 ```
 
@@ -309,13 +330,105 @@ plugin.tx_semanticsuggestion_suggestions.settings {
 
 ## Configuration
 
-⚠️ **Important**: The extension's configuration is split between **Scheduler task settings** (analysis scope and execution) and **TypoScript settings** (frontend display and algorithm parameters).
+🎯 **NEW in v3.1**: **Unified Quality Configuration** replaces the old complex hierarchy! Now use a single `qualityLevel` parameter instead of managing separate `minimumSimilarity` and `proximityThreshold`. Full backward compatibility maintained.
+
+### 🚀 Unified Configuration (v3.1+)
+
+The new unified configuration eliminates the confusing hierarchy and dual parameters. Now you only need **ONE parameter** for quality control:
+
+```
+🎯 UNIFIED CONFIGURATION FLOW:
+┌─────────────────┐    ┌──────────────────┐    ┌──────────────────┐
+│   qualityLevel  │───▶│  Storage: -0.1   │───▶│  Display: same   │
+│   (0.1 - 1.0)   │    │  (broad range)   │    │  (quality)       │
+└─────────────────┘    └──────────────────┘    └──────────────────┘
+    ONE PARAMETER           AUTOMATIC            USER SEES QUALITY
+    TO MAINTAIN             OPTIMIZATION         SUGGESTIONS
+```
+
+**Benefits:**
+- ✅ **Single parameter** instead of complex hierarchy
+- ✅ **Automatic optimization** (storage = qualityLevel - 0.1, display = qualityLevel)
+- ✅ **No more conflicts** between Scheduler and TypoScript
+- ✅ **Backward compatibility** with legacy configurations
+- ✅ **Self-explanatory** values (higher = more selective)
+
+### Legacy Configuration Hierarchy (v3.0 and earlier)
+
+> **⚠️ DEPRECATED**: This section documents the old system for reference. **Use unified `qualityLevel` instead!**
+
+<details>
+<summary>Click to view legacy configuration details</summary>
+
+Understanding the configuration hierarchy is **critical** for proper setup. The extension uses a **two-tier system** where Scheduler settings **always take precedence** over TypoScript settings:
+
+```
+🔄 CONFIGURATION FLOW:
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐    ┌──────────────────┐
+│   Scheduler     │───▶│    Database      │───▶│   TypoScript    │───▶│   Frontend       │
+│   Settings      │    │    Storage       │    │   Settings      │    │   Display        │
+└─────────────────┘    └──────────────────┘    └─────────────────┘    └──────────────────┘
+     LEVEL 1                 LEVEL 2                LEVEL 3               LEVEL 4
+   (Analysis &              (Persistent            (Display &             (User Sees
+    Storage)                 Data)                 Filtering)             Results)
+```
+
+#### **🎯 Level 1: Scheduler Configuration (Master Control)**
+- **Controls**: What gets analyzed and stored in database
+- **Authority**: Absolute - cannot be overridden by TypoScript
+- **Key Settings**:
+  - `startPageId`: Defines analysis scope
+  - `excludePages`: Pages **never analyzed** (permanent exclusion)
+  - `minimumSimilarity`: Minimum score to **store** in database
+  - `recursiveExclusion`: How exclusions are applied
+
+#### **🔍 Level 2: Database Storage (Persistent Data)**
+- **Contains**: Only similarities ≥ `minimumSimilarity` from Scheduler
+- **Source**: Generated by Scheduler task execution
+- **Limitation**: TypoScript cannot access data that was never stored
+
+#### **🎨 Level 3: TypoScript Configuration (Display Filter)**
+- **Controls**: What gets displayed from existing database data
+- **Limitation**: Can only filter/limit existing data, cannot create new data
+- **Key Settings**:
+  - `proximityThreshold`: Minimum score to **display** (must be ≥ Scheduler `minimumSimilarity`)
+  - `maxSuggestions`: Limit displayed results
+  - `excludePages`: Pages excluded from **display only** (still analyzed/stored)
+
+#### **👁️ Level 4: Frontend Display (Final Output)**
+- **Shows**: Final filtered and limited results
+- **Source**: Database data filtered by TypoScript settings
+
+#### **⚖️ Priority Rules**
+
+1. **Scheduler ALWAYS wins**:
+   ```
+   Scheduler excludePages = "42,56"
+   TypoScript excludePages = "" (empty)
+   → Pages 42,56 will NEVER appear (not analyzed at all)
+   ```
+
+2. **TypoScript cannot override Scheduler thresholds**:
+   ```
+   Scheduler minimumSimilarity = 0.5
+   TypoScript proximityThreshold = 0.3
+   → Impossible! No similarity < 0.5 exists in database
+   ```
+
+3. **TypoScript can only be MORE restrictive**:
+   ```
+   Scheduler minimumSimilarity = 0.3 ✅
+   TypoScript proximityThreshold = 0.5 ✅
+   → Works: Shows only similarities ≥ 0.5 from stored data ≥ 0.3
+   ```
 
 ### Scheduler Task Configuration
 
-**This is the primary configuration** that controls the analysis execution and what gets stored in the database.
+> **🔧 CRITICAL**: This is the **primary configuration** that controls what gets analyzed and stored in the database. TypoScript cannot override these settings!
 
 Create a **"Semantic Suggestion: Generate Similarities"** task in the TYPO3 Scheduler module with these settings:
+
+> **⚠️ WARNING**: Choose your `minimumSimilarity` carefully - it cannot be lowered retroactively without re-running the entire analysis!
 
 - **`startPageId`** (required): The UID of the root page from which the analysis will begin. This defines the scope of the analysis for this task run. Each task execution is linked to a Start Page ID (stored as `root_page_id` in the DB).
   - Example: `1` (for site root page)
@@ -332,29 +445,40 @@ Create a **"Semantic Suggestion: Generate Similarities"** task in the TYPO3 Sche
 
 ### TypoScript Settings
 
-These settings control the **frontend display** and the **details of the analysis algorithm**. Define them in your TypoScript Setup file under `plugin.tx_semanticsuggestion_suggestions.settings`.
+> **🎨 DISPLAY FILTER**: These settings control the **frontend display** and the **analysis algorithm details**. They can only filter/limit what was already stored by the Scheduler.
+
+> **❌ CONSTRAINT**: `proximityThreshold` MUST be ≥ Scheduler `minimumSimilarity` (otherwise no suggestions will display)
+
+Define them in your TypoScript Setup file under `plugin.tx_semanticsuggestion_suggestions.settings`.
 
 #### Constants (constants.typoscript)
 
 ```typoscript
 plugin.tx_semanticsuggestion_suggestions.settings {
     # --- Frontend Display Settings ---
-    proximityThreshold = 0.5     # Minimum similarity threshold TO DISPLAY a suggestion (0.0 to 1.0)
+    # ⚠️ IMPORTANT: Must be ≥ Scheduler minimumSimilarity
+    proximityThreshold = 0.25    # TF-IDF optimized threshold (was 0.5 in v2.x)
     maxSuggestions = 3           # Maximum number of suggestions to display
     excerptLength = 100          # Max length of the text excerpt
-    excludePages =               # Pages to exclude from DISPLAY (comma-separated list of UIDs)
+    excludePages =               # Pages to exclude from DISPLAY only (comma-separated UIDs)
 
     # --- Analysis Algorithm Settings (Used by Scheduler task) ---
     recencyWeight = 0.2          # Weight of recency in the final score (0.0 to 1.0)
-    
-    # Fields analyzed and their weights
+
+    # Fields analyzed and their weights (TF-IDF enhanced)
     analyzedFields {
-        title = 1.5              # Weight of page title
-        description = 1.0        # Weight of page description
-        keywords = 2.0           # Weight of page keywords
-        abstract = 1.2           # Weight of page abstract
-        content = 1.0            # Weight of page content elements
+        title = 1.5              # Page titles are highly relevant
+        description = 1.0        # Meta descriptions
+        keywords = 2.0           # Explicit keywords have high weight
+        abstract = 1.2           # Page abstracts/summaries
+        content = 1.0            # Main page content (can be noisy)
     }
+
+    # --- NLP & Language Settings (v3.0+) ---
+    enableStemming = 1           # Enable advanced stemming (especially for German)
+    defaultLanguage = en         # Fallback language
+    minTextLength = 50           # Minimum text length for analysis
+    confidenceThreshold = 0.3    # Language detection confidence threshold
 
     # --- Debugging ---
     debugMode = 0                # Enable debug logs (0 or 1)
@@ -447,20 +571,33 @@ plugin.tx_semanticsuggestion_suggestions {
 
 #### Multilingual Site Example Configuration
 
-For a German/English bilingual site:
+**For a German/English bilingual site:**
 
 ```typoscript
 # constants.typoscript
 plugin.tx_semanticsuggestion_suggestions.settings {
-    enableStemming = 1
-    proximityThreshold = 0.25
+    # 🇩🇪 German language optimization
+    enableStemming = 1                    # Critical for compound words
+    proximityThreshold = 0.25             # Lower threshold for German compound matching
     confidenceThreshold = 0.3
-    
+
+    # Language detection mapping
     languageMapping {
-        0 = en
-        1 = de
+        0 = en                           # TYPO3 language UID 0 = English
+        1 = de                           # TYPO3 language UID 1 = German
+    }
+
+    # German-optimized field weights
+    analyzedFields {
+        title = 2.0                      # German titles contain key compounds
+        keywords = 2.5                   # German keywords are very specific
+        content = 1.0                    # Standard content weight
     }
 }
+
+# IMPORTANT: Create separate Scheduler tasks:
+# Task 1: English content (startPageId = 1, minimumSimilarity = 0.3)
+# Task 2: German content (startPageId = 10, minimumSimilarity = 0.25)
 ```
 
 ### Configuration Interaction
@@ -476,6 +613,243 @@ plugin.tx_semanticsuggestion_suggestions.settings {
   - The `proximityThreshold` (TypoScript) cannot display suggestions with a score lower than the `minimumSimilarity` (Scheduler) because they were not saved. For the TypoScript setting to be effective, it must be ≥ the Scheduler threshold.
   - A page excluded in the Scheduler will never be analyzed/stored. A page excluded *only* in TypoScript will be analyzed/stored (if not excluded in Scheduler) but not displayed. It's often simpler to keep the `excludePages` lists synchronized.
   - You can create **multiple Scheduler tasks** with different `startPageId` values to analyze different sections of the site.
+
+</details>
+
+### Unified Configuration Setup
+
+#### 1. Scheduler Task Configuration (Simplified)
+
+Create a **"Semantic Suggestion: Generate Similarities"** task with these settings:
+
+- **`startPageId`** (required): Root page UID for analysis scope
+- **`qualityLevel`** (required): Quality threshold (0.1-1.0) for suggestions
+  - **Storage**: Automatically set to `qualityLevel - 0.1` (broad data collection)
+  - **Display**: Uses `qualityLevel` directly (quality suggestions to users)
+- **`excludePages`** (optional): Pages to exclude from both analysis and display
+- **`recursiveExclusion`** (optional): Apply exclusions recursively
+
+**Recommended Quality Levels:**
+```
+🇩🇪 German sites: 0.25 (compound word optimization)
+🌍 Standard sites: 0.30 (balanced quality/quantity)
+📚 Content sites: 0.35 (higher quality threshold)
+💎 Premium sites: 0.40 (very selective suggestions)
+```
+
+#### 2. TypoScript Configuration (Simplified)
+
+```typoscript
+plugin.tx_semanticsuggestion_suggestions {
+    settings {
+        # 🎯 UNIFIED QUALITY CONTROL
+        qualityLevel = 0.3              # Single parameter for all quality control
+
+        # Display Settings
+        maxSuggestions = 3              # Number of suggestions to show
+        excludePages =                  # Additional pages to exclude from display
+        excerptLength = 100             # Text excerpt length
+
+        # NLP Settings (v3.0+)
+        enableStemming = 1              # Enable advanced text processing
+        defaultLanguage = en            # Fallback language
+        debugMode = 0                   # Debug logging
+    }
+}
+```
+
+### Configuration Examples
+
+#### Basic Setup (Most Common)
+```typoscript
+# Single quality level controls everything
+qualityLevel = 0.3
+
+# Result:
+# - Storage threshold: 0.2 (collects broad range)
+# - Display threshold: 0.3 (shows quality suggestions)
+# - No configuration conflicts possible
+```
+
+#### German Site Optimization
+```typoscript
+# Lower threshold for German compound words
+qualityLevel = 0.25
+enableStemming = 1
+
+# Result optimized for compound words like:
+# "Automobil" ↔ "Automobilindustrie"
+```
+
+#### High-Quality Site
+```typoscript
+# Higher threshold for premium content
+qualityLevel = 0.4
+
+# Result:
+# - Storage threshold: 0.3 (good range)
+# - Display threshold: 0.4 (only excellent suggestions)
+```
+
+### Migration from Legacy Configuration
+
+#### Automatic Migration
+
+The extension automatically migrates old configurations:
+
+```
+Legacy v3.0:
+  Scheduler: minimumSimilarity = 0.4
+  TypoScript: proximityThreshold = 0.5
+
+Auto-migrated to v3.1:
+  qualityLevel = 0.5 (migrated from proximityThreshold)
+  Internal storage = 0.4 (preserved)
+```
+
+#### Manual Migration Guide
+
+1. **Identify your old `proximityThreshold`** from TypoScript
+2. **Set `qualityLevel`** to that value
+3. **Remove old parameters**:
+   - Delete `proximityThreshold` from TypoScript
+   - Delete `minimumSimilarity` from Scheduler (auto-computed)
+   - Merge duplicate `excludePages` lists
+
+**Example Migration:**
+```typoscript
+# OLD v3.0 configuration
+plugin.tx_semanticsuggestion_suggestions.settings {
+    proximityThreshold = 0.35          # OLD: Display threshold
+    excludePages = 42,56,78            # OLD: Display exclusions only
+}
+
+# NEW v3.1 configuration
+plugin.tx_semanticsuggestion_suggestions.settings {
+    qualityLevel = 0.35               # NEW: Unified quality control
+    excludePages = 42,56,78           # NEW: Unified exclusions (analysis + display)
+}
+
+# Scheduler task OLD: minimumSimilarity = 0.25, excludePages = ""
+# Scheduler task NEW: qualityLevel = 0.35 (automatically computes storage = 0.25)
+```
+
+### Legacy Configuration Constraints & Common Pitfalls
+
+Understanding these technical constraints will save you hours of debugging:
+
+#### **🚫 Critical Constraints**
+
+##### **1. Threshold Hierarchy Rule**
+```
+❌ WRONG Configuration:
+Scheduler: minimumSimilarity = 0.7
+TypoScript: proximityThreshold = 0.3
+→ Result: NO suggestions displayed (none stored below 0.7)
+
+✅ CORRECT Configuration:
+Scheduler: minimumSimilarity = 0.3
+TypoScript: proximityThreshold = 0.7
+→ Result: Shows high-quality suggestions from broader stored data
+```
+
+**Rule**: `proximityThreshold` ≥ `minimumSimilarity` (or equal)
+
+##### **2. Exclusion Scope Difference**
+```
+❌ PROBLEMATIC:
+Scheduler: excludePages = "" (empty)
+TypoScript: excludePages = "42,56,78"
+→ Result: Pages 42,56,78 are analyzed/stored but never displayed (wasted processing)
+
+✅ EFFICIENT:
+Scheduler: excludePages = "42,56,78"
+TypoScript: excludePages = "" (empty or same list)
+→ Result: Pages 42,56,78 are never processed (faster, cleaner)
+```
+
+##### **3. TF-IDF Score Ranges (NEW in v3.0)**
+```
+⚠️ TF-IDF produces LOWER scores than v2.x cosine similarity:
+v2.x typical range: 0.3-0.9
+v3.0 TF-IDF range: 0.05-0.4
+
+❌ Legacy Configuration:
+minimumSimilarity = 0.8  → NO results with TF-IDF
+
+✅ TF-IDF Optimized:
+minimumSimilarity = 0.15  → Good range for TF-IDF
+proximityThreshold = 0.25  → Quality suggestions
+```
+
+#### **📊 Language-Specific Constraints**
+
+##### **German Language (Compound Words)**
+```
+🇩🇪 German sites need LOWER thresholds due to compound word stemming:
+
+❌ Standard Configuration:
+proximityThreshold = 0.5  → Misses compound relationships
+
+✅ German Optimized:
+minimumSimilarity = 0.15
+proximityThreshold = 0.25
+enableStemming = 1
+→ Captures "Automobil" ↔ "Automobilindustrie" relationships
+```
+
+##### **Multi-language Sites**
+```
+⚠️ CONSTRAINT: Each language needs separate analysis
+
+❌ Single Task Configuration:
+Task 1: startPageId = 1 (analyzing both English + German pages)
+→ Result: Language mixing, poor similarity quality
+
+✅ Multi-Task Configuration:
+Task 1: startPageId = 1 (English root) - minimumSimilarity = 0.3
+Task 2: startPageId = 10 (German root) - minimumSimilarity = 0.25
+→ Result: Optimized per-language analysis
+```
+
+#### **⚡ Performance Constraints**
+
+##### **Large Site Thresholds**
+```
+Sites with >500 pages:
+
+❌ Permissive Configuration:
+minimumSimilarity = 0.05  → Database bloat (millions of records)
+maxSuggestions = 10  → Slow frontend queries
+
+✅ Performance Optimized:
+minimumSimilarity = 0.25  → Quality storage
+proximityThreshold = 0.4  → Fast display
+maxSuggestions = 3  → Quick queries
+```
+
+#### **🔧 Validation Rules Checklist**
+
+Before deploying, verify these constraints:
+
+- [ ] **Threshold Check**: `proximityThreshold` ≥ `minimumSimilarity`
+- [ ] **Exclusion Sync**: Scheduler `excludePages` includes all TypoScript exclusions
+- [ ] **TF-IDF Adjustment**: Thresholds lowered from v2.x values (≤ 0.4 typically)
+- [ ] **Language Separation**: Each language has its own Scheduler task
+- [ ] **Performance Test**: Task execution time acceptable for your server
+- [ ] **Storage Monitoring**: Database table `tx_semanticsuggestion_similarities` size reasonable
+
+#### **🚨 Warning Signs of Misconfiguration**
+
+Watch for these symptoms:
+
+| Symptom | Likely Cause | Solution |
+|---------|-------------|----------|
+| **Zero suggestions displayed** | `proximityThreshold` > all stored similarities | Lower `proximityThreshold` or `minimumSimilarity` |
+| **Poor suggestion quality** | Threshold too low | Raise `proximityThreshold` |
+| **Missing expected pages** | Pages excluded in Scheduler | Check `excludePages` settings |
+| **Scheduler timeouts** | Large site with low threshold | Raise `minimumSimilarity` |
+| **Mixed language results** | Single task for multilingual site | Create per-language tasks |
 
 ## Usage (Frontend)
 
@@ -707,24 +1081,34 @@ plugin.tx_semanticsuggestion_suggestions.settings {
 
 ### 🚀 Performance Optimization
 
-#### Recommended Settings for Large Sites
+#### Recommended Settings for Large Sites (>500 pages)
 ```typoscript
+# Scheduler Configuration: minimumSimilarity = 0.3 (storage optimization)
 plugin.tx_semanticsuggestion_suggestions.settings {
-    # Reduce analysis scope
-    minTextLength = 100          # Skip very short content
-    
-    # Cache-friendly thresholds  
-    proximityThreshold = 0.3     # Higher threshold = less processing
-    
-    # Selective field analysis
+    # Performance optimizations
+    minTextLength = 100               # Skip short content (faster processing)
+    proximityThreshold = 0.4          # Higher display threshold (faster queries)
+    maxSuggestions = 3                # Limit results (faster rendering)
+
+    # Selective field analysis (reduce processing time)
     analyzedFields {
-        title = 2.0
-        keywords = 2.0
-        content = 0               # Disable content analysis if too slow
-        description = 1.0
-        abstract = 0              # Disable if not used
+        title = 2.0                   # Titles are fast to process
+        keywords = 2.0                # Keywords are lightweight
+        content = 0.5                 # Reduce content weight (can be slow)
+        description = 1.0             # Meta descriptions are fast
+        abstract = 0                  # Disable if not commonly used
     }
+
+    # Conservative language settings
+    confidenceThreshold = 0.4         # Higher confidence reduces processing
+    enableStemming = 1                # Keep enabled (cached results)
 }
+
+# SCHEDULER OPTIMIZATION for large sites:
+# Split into multiple tasks:
+# Task 1: Pages 1-100 (daily)
+# Task 2: Pages 101-200 (every 2 days)
+# Task 3: Pages 201+ (weekly)
 ```
 
 #### Cache Configuration
@@ -736,6 +1120,370 @@ Ensure TYPO3 cache is properly configured for optimal performance:
 # Monitor cache effectiveness
 ./vendor/bin/typo3 cache:listGroups
 ```
+
+## Configuration Troubleshooting
+
+### 🔍 Step-by-Step Diagnosis
+
+When suggestions aren't working as expected, follow this systematic approach:
+
+#### **Step 1: Verify Scheduler Task Execution**
+
+```bash
+# Check if task has run successfully
+./vendor/bin/typo3 scheduler:run
+
+# Check TYPO3 logs for task errors
+tail -f var/log/typo3_*.log | grep -i semantic
+```
+
+**Expected Output:**
+```
+[INFO] Starting similarity generation task, startPageId: 1, minimumSimilarity: 0.3
+[INFO] Similarity generation task completed successfully
+```
+
+#### **Step 2: Verify Database Content**
+
+```sql
+-- Check if similarities are stored
+SELECT COUNT(*) as total_similarities
+FROM tx_semanticsuggestion_similarities;
+
+-- Check score distribution
+SELECT
+    ROUND(similarity_score, 1) as score_range,
+    COUNT(*) as count,
+    sys_language_uid
+FROM tx_semanticsuggestion_similarities
+GROUP BY ROUND(similarity_score, 1), sys_language_uid
+ORDER BY score_range DESC;
+```
+
+**Healthy Output Example:**
+```
+score_range | count | sys_language_uid
+0.4         | 15    | 0
+0.3         | 42    | 0
+0.2         | 128   | 0
+0.1         | 203   | 0
+```
+
+#### **Step 3: Test Configuration Hierarchy**
+
+```typoscript
+# Enable debug mode temporarily
+plugin.tx_semanticsuggestion_suggestions.settings {
+    debugMode = 1
+}
+```
+
+**Check Debug Logs:**
+```bash
+tail -f typo3temp/logs/semantic_suggestion.log
+```
+
+### 🚨 Common Problems & Solutions
+
+#### **Problem 1: "No suggestions displayed anywhere"**
+
+**Symptoms:**
+- Frontend shows empty suggestions list
+- Backend module shows 0 similar pairs
+
+**Diagnosis Checklist:**
+```
+✓ Scheduler task executed successfully?
+✓ Database contains similarities?
+✓ proximityThreshold ≤ stored similarities?
+✓ Current page has stored similarities?
+```
+
+**Solutions:**
+
+1. **Threshold Too High**
+   ```
+   ❌ Current: proximityThreshold = 0.8
+   ✅ Fix: proximityThreshold = 0.3 (or lower)
+
+   # Or check what's actually in database:
+   SELECT MAX(similarity_score) FROM tx_semanticsuggestion_similarities;
+   ```
+
+2. **Scheduler Never Ran**
+   ```bash
+   # Manual execution
+   ./vendor/bin/typo3 scheduler:run <task_id>
+
+   # Check task configuration
+   SELECT * FROM tx_scheduler_task WHERE classname LIKE '%Similarities%';
+   ```
+
+3. **Wrong Root Page**
+   ```
+   ❌ Current: startPageId = 1, viewing page = 42
+   ✅ Fix: startPageId = 1, ensure page 42 is child of page 1
+
+   # Verify page tree relationship
+   SELECT pid, title FROM pages WHERE uid = 42;
+   ```
+
+#### **Problem 2: "Suggestions displayed but poor quality"**
+
+**Symptoms:**
+- Suggestions shown but irrelevant
+- Mixed languages in suggestions
+- Very low similarity scores
+
+**Solutions:**
+
+1. **TF-IDF Score Adjustment (v3.0+)**
+   ```typoscript
+   ❌ Legacy: proximityThreshold = 0.7
+   ✅ TF-IDF: proximityThreshold = 0.25
+
+   # TF-IDF scores are naturally lower
+   ```
+
+2. **Language Separation Required**
+   ```
+   ❌ Single task: Pages 1-100 (mixed EN/DE content)
+   ✅ Multi-task:
+   - Task 1: English pages (1-50)
+   - Task 2: German pages (51-100)
+   ```
+
+3. **Field Weight Optimization**
+   ```typoscript
+   # Increase weight of reliable fields
+   analyzedFields {
+       title = 2.0        # Titles are usually accurate
+       keywords = 2.5     # Keywords are intentional
+       content = 0.5      # Content can be noisy
+   }
+   ```
+
+#### **Problem 3: "Missing expected pages in suggestions"**
+
+**Symptoms:**
+- Page A should suggest Page B (they're clearly related)
+- Page B exists in database but not suggested to Page A
+
+**Diagnosis:**
+```sql
+-- Check if relationship exists in database
+SELECT similarity_score
+FROM tx_semanticsuggestion_similarities
+WHERE page_id = A AND similar_page_id = B;
+
+-- Check if excluded somewhere
+SELECT exclude_pages FROM tx_scheduler_task WHERE classname LIKE '%Similarities%';
+```
+
+**Solutions:**
+
+1. **Page Excluded in Scheduler**
+   ```
+   ❌ Scheduler excludePages = "42,56,78" (contains Page B)
+   ✅ Remove Page B from exclusions, re-run Scheduler
+   ```
+
+2. **Similarity Below Threshold**
+   ```sql
+   -- Find actual similarity score
+   SELECT similarity_score FROM tx_semanticsuggestion_similarities
+   WHERE page_id = A AND similar_page_id = B;
+
+   -- If score = 0.22 but proximityThreshold = 0.3
+   -- Lower the threshold or improve content similarity
+   ```
+
+3. **Text Content Insufficient**
+   ```
+   Check if Page A or B has minimal text content:
+   - Minimum 50 characters required
+   - Pure image pages won't generate similarities
+   - Check 'minTextLength' setting
+   ```
+
+#### **Problem 4: "Scheduler task timeouts or fails"**
+
+**Symptoms:**
+- Task shows "Failed" status
+- PHP timeout errors in logs
+- Task takes >5 minutes
+
+**Solutions:**
+
+1. **Increase Processing Limits**
+   ```php
+   # In Scheduler task or php.ini
+   ini_set('max_execution_time', 300);  // 5 minutes
+   ini_set('memory_limit', '512M');
+   ```
+
+2. **Reduce Analysis Scope**
+   ```
+   ❌ Current: startPageId = 1 (1000+ pages)
+   ✅ Split:
+   - Task 1: startPageId = 1 (pages 1-100)
+   - Task 2: startPageId = 101 (pages 101-200)
+   ```
+
+3. **Increase Threshold**
+   ```
+   ❌ Current: minimumSimilarity = 0.05 (stores everything)
+   ✅ Optimized: minimumSimilarity = 0.25 (quality only)
+   ```
+
+#### **Problem 5: "Mixed language suggestions"**
+
+**Symptoms:**
+- English page suggests German pages
+- Suggestions ignore language boundaries
+
+**Solutions:**
+
+1. **Enable Language Mapping**
+   ```typoscript
+   plugin.tx_semanticsuggestion_suggestions.settings {
+       languageMapping {
+           0 = en
+           1 = de
+           2 = fr
+       }
+   }
+   ```
+
+2. **Check Site Configuration**
+   ```yaml
+   # site/config.yaml should have proper locales
+   languages:
+     - languageId: 0
+       locale: 'en_US.UTF-8'  # ← Must be properly formatted
+     - languageId: 1
+       locale: 'de_DE.UTF-8'  # ← Must be properly formatted
+   ```
+
+3. **Separate Scheduler Tasks**
+   ```
+   Instead of: One task analyzing mixed language tree
+   Use: One task per language branch
+   ```
+
+### 🔧 Quick Fix Commands
+
+```bash
+# Clear all caches
+./vendor/bin/typo3 cache:flush
+
+# Re-run all scheduler tasks
+./vendor/bin/typo3 scheduler:run
+
+# Check database table size
+echo "SELECT COUNT(*) FROM tx_semanticsuggestion_similarities;" | mysql your_db
+
+# Reset extension configuration (emergency)
+./vendor/bin/typo3 configuration:remove --path="EXTENSIONS/semantic_suggestion"
+./vendor/bin/typo3 extension:deactivate semantic_suggestion
+./vendor/bin/typo3 extension:activate semantic_suggestion
+```
+
+### 📋 Pre-Deployment Checklist
+
+Before going live, verify:
+
+- [ ] **Scheduler Tasks**: All tasks run successfully without timeouts
+- [ ] **Database Check**: `tx_semanticsuggestion_similarities` contains expected data
+- [ ] **Threshold Validation**: `proximityThreshold` ≥ `minimumSimilarity`
+- [ ] **Language Testing**: Each language shows appropriate suggestions
+- [ ] **Performance Test**: Frontend loads suggestions in <200ms
+- [ ] **Content Quality**: Manual review of suggestion relevance
+- [ ] **Exclusion Review**: All intentionally excluded pages work correctly
+
+## 🛡️ Final Configuration Validation Checklist
+
+Use this comprehensive checklist to ensure your configuration is optimal:
+
+### ✅ **Scheduler Configuration Validation**
+- [ ] **startPageId exists** and is accessible: `SELECT title FROM pages WHERE uid = [startPageId];`
+- [ ] **minimumSimilarity appropriate for TF-IDF**: Between 0.1 and 0.4 (not v2.x values like 0.8)
+- [ ] **excludePages list verified**: All UIDs exist and are intentionally excluded
+- [ ] **Task execution successful**: Check task history and logs for errors
+- [ ] **Multilingual separation**: Each language has its own task (recommended)
+
+### ✅ **TypoScript Configuration Validation**
+- [ ] **Threshold hierarchy respected**: `proximityThreshold ≥ minimumSimilarity`
+- [ ] **TF-IDF thresholds updated**: Not using v2.x legacy values (>0.5)
+- [ ] **Language settings match site**: `languageMapping` corresponds to TYPO3 language UIDs
+- [ ] **Field weights optimized**: Higher weights for title/keywords, lower for content
+- [ ] **Performance settings**: `maxSuggestions` and `minTextLength` appropriate for site size
+
+### ✅ **Database & Storage Validation**
+```sql
+-- Verify data exists and has reasonable distribution
+SELECT
+    sys_language_uid,
+    MIN(similarity_score) as min_score,
+    MAX(similarity_score) as max_score,
+    AVG(similarity_score) as avg_score,
+    COUNT(*) as total_pairs
+FROM tx_semanticsuggestion_similarities
+GROUP BY sys_language_uid;
+
+-- Check for unexpected language mixing
+SELECT DISTINCT root_page_id, sys_language_uid, COUNT(*) as pairs
+FROM tx_semanticsuggestion_similarities
+GROUP BY root_page_id, sys_language_uid;
+```
+
+### ✅ **Frontend Integration Validation**
+- [ ] **Plugin displays correctly**: `<f:cObject typoscriptObjectPath='lib.semantic_suggestion' />` works
+- [ ] **Suggestions appear on pages**: Test on multiple pages with different content
+- [ ] **Language separation working**: German pages don't show English suggestions
+- [ ] **Exclusions effective**: Excluded pages don't appear in suggestions
+- [ ] **Performance acceptable**: Page load time impact <100ms
+
+### ✅ **NLP & Language Detection Validation**
+- [ ] **nlp_tools dependency installed**: `composer show cywolf/nlp-tools`
+- [ ] **Stemming working** (German sites): Debug logs show stemmed words
+- [ ] **Language detection accurate**: Pages analyzed in correct language
+- [ ] **Site configuration proper**: Locales formatted as `de_DE.UTF-8` (not just `de`)
+
+### 🚨 **Red Flags to Watch For**
+
+| Warning Sign | Quick Test | Solution |
+|-------------|------------|----------|
+| **Zero suggestions anywhere** | `SELECT COUNT(*) FROM tx_semanticsuggestion_similarities;` | Lower thresholds or check task |
+| **Very low similarity scores** (all <0.1) | Check debug logs for TF-IDF failures | Verify text length and language detection |
+| **Mixed language results** | Test DE page shows EN suggestions | Separate scheduler tasks |
+| **Poor suggestion quality** | Manual review of top suggestions | Adjust field weights or thresholds |
+| **Slow performance** | Frontend timing >500ms | Increase thresholds or reduce maxSuggestions |
+
+### 🎯 **Configuration Quality Score**
+
+Rate your setup (aim for 80%+ before going live):
+
+**Basic Setup (50 points)**
+- [ ] Scheduler task runs (20 pts)
+- [ ] Database contains data (15 pts)
+- [ ] Frontend shows suggestions (15 pts)
+
+**Optimization (30 points)**
+- [ ] TF-IDF thresholds optimized (10 pts)
+- [ ] Language separation implemented (10 pts)
+- [ ] Performance <200ms (10 pts)
+
+**Advanced Features (20 points)**
+- [ ] German stemming active (5 pts)
+- [ ] Debug logging configured (5 pts)
+- [ ] Exclusions properly managed (5 pts)
+- [ ] Field weights customized (5 pts)
+
+**Score: ___ / 100**
+
+> **Target**: 80+ for production deployment
+> **Minimum**: 60+ for staging/testing
 
 ## Migration from v2.x
 

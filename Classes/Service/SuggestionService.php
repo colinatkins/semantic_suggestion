@@ -14,6 +14,9 @@ use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
 class SuggestionService
 {
+    public const DEFAULT_QUALITY_LEVEL = 0.3;
+    public const MAX_RECENCY_DAYS = 30;
+
     protected array $settings = [];
 
     public function __construct(
@@ -35,6 +38,15 @@ class SuggestionService
         );
     }
 
+    /**
+     * Generates semantic suggestions for a given page based on analysis.
+     *
+     * @param array $controllerSettings Configuration settings for the suggestion generation
+     * @param int $currentPageId The ID of the current page
+     * @param int $currentPage Current page number for pagination
+     * @param int $itemsPerPage Number of items per page
+     * @return array Array containing suggestions, pagination info, and analysis results
+     */
     public function generateSuggestions(array $controllerSettings, int $currentPageId, int $currentPage, int $itemsPerPage): array
     {
         $parentPageId = isset($controllerSettings['parentPageId']) ? (int)$controllerSettings['parentPageId'] : 0;
@@ -117,6 +129,14 @@ class SuggestionService
         ];
     }
 
+    /**
+     * Generates semantic suggestions from the database for a given page.
+     *
+     * @param int $currentPageId The ID of the current page
+     * @param int $currentPage Current page number for pagination
+     * @param int $itemsPerPage Number of items per page
+     * @return array Array containing suggestions and pagination info
+     */
     public function generateSuggestionsFromDatabase(int $currentPageId, int $currentPage, int $itemsPerPage): array
     {
         $this->utility->logDebug('Generating suggestions from database', [
@@ -348,7 +368,7 @@ class SuggestionService
     {
         $now = time();
         $age = $now - $timestamp;
-        $maxAge = 30 * 24 * 60 * 60; // 30 jours en secondes
+        $maxAge = self::MAX_RECENCY_DAYS * 24 * 60 * 60; // 30 jours en secondes
 
         return max(0, 1 - ($age / $maxAge));
     }
@@ -429,7 +449,7 @@ class SuggestionService
         }
 
         // Default quality level for TF-IDF
-        return 0.3;
+        return self::DEFAULT_QUALITY_LEVEL;
     }
 
     /**

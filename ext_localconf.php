@@ -14,14 +14,14 @@ use TYPO3\CMS\Core\Log\Writer\FileWriter;
     $versionInformation = GeneralUtility::makeInstance(Typo3Version::class);
     $isTypo3Version12OrLower = $versionInformation->getMajorVersion() < 13;
 
-    // Plugin Frontend 'Suggestions' (Inconditionnel)
+    // Frontend plugin 'Suggestions' configuration (unconditional)
     ExtensionUtility::configurePlugin(
         'SemanticSuggestion', 'Suggestions',
         [\TalanHdf\SemanticSuggestion\Controller\SuggestionsController::class => 'list'],
         []  
     );
 
-    // Plugin 'SemanticBackend' (Conditionnel)
+    // Backend plugin 'SemanticBackend' configuration (conditional based on TYPO3 version)
     if ($isTypo3Version12OrLower) {
         ExtensionUtility::configurePlugin(
             'SemanticSuggestion', 'SemanticBackend',
@@ -36,15 +36,15 @@ use TYPO3\CMS\Core\Log\Writer\FileWriter;
         );
     }
 
-    // Hooks TCA (Inconditionnel)
+    // TCA hooks registration (unconditional)
     $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['processDatamapClass'][] = \TalanHdf\SemanticSuggestion\Hooks\DataHandlerHook::class;
     $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['processCmdmapClass'][] = \TalanHdf\SemanticSuggestion\Hooks\DataHandlerHook::class;
 
-    // TypoScript (Inconditionnel)
+    // TypoScript setup and constants import (unconditional)
     \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addTypoScriptSetup('@import "EXT:semantic_suggestion/Configuration/TypoScript/setup.typoscript"');
     \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addTypoScriptConstants('@import "EXT:semantic_suggestion/Configuration/TypoScript/constants.typoscript"');
 
-    // Cache (Inconditionnel)
+    // Cache configuration (unconditional)
     if (!isset($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['semantic_suggestion'])) {
         $GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['semantic_suggestion'] = [
             'frontend' => VariableFrontend::class, 'backend' => FileBackend::class,
@@ -52,7 +52,7 @@ use TYPO3\CMS\Core\Log\Writer\FileWriter;
         ];
     }
 
-    // Scheduler task registration
+    // Scheduler task registration for background similarity generation
     $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['scheduler']['tasks'][\TalanHdf\SemanticSuggestion\Task\GenerateSimilaritiesTask::class] = [
         'extension' => 'semantic_suggestion',
         'title' => 'LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.task.title',
@@ -60,7 +60,7 @@ use TYPO3\CMS\Core\Log\Writer\FileWriter;
         'additionalFields' => \TalanHdf\SemanticSuggestion\Task\GenerateSimilaritiesAdditionalFieldProvider::class
     ];
 
-    // Logger (Logique de chemin conditionnelle ou simplifiée)
+    // Logger configuration (simplified path logic)
     $logFilePath = 'typo3temp/logs/semantic_suggestion.log'; // Chemin simple et fiable
     // Vous pouvez essayer de rendre le chemin absolu :
     // $logFilePath = GeneralUtility::getFileAbsFileName($logFilePath);

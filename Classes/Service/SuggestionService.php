@@ -364,7 +364,7 @@ class SuggestionService
         return $suggestions;
     }
 
-    protected function calculateRecencyScore($timestamp)
+    protected function calculateRecencyScore(int $timestamp): float
     {
         $now = time();
         $age = $now - $timestamp;

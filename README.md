@@ -125,6 +125,10 @@ Since version 2.0.0, similarity scores are **stored in a dedicated database tabl
     ```
 2.  Activate both extensions in the TYPO3 Extension Manager.
 3.  Clear TYPO3 cache: `./vendor/bin/typo3 cache:flush`
+4.  (Optional) Run unit tests to verify installation:
+    ```bash
+    ./vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite unit
+    ```
 
 </details>
 

@@ -48,7 +48,13 @@ class LegacySemanticBackendController extends ActionController
     // --- Méthode pour le logging (simplifiée) ---
     private function logDebug(string $message, array $context = []): void
     {
-        $this->logger->debug($message, $context);
+        // Récupérer les settings depuis PageAnalysisService
+        $settings = $this->pageAnalysisService->getSettings();
+
+        // Vérifier si debugMode est activé avant d'écrire les logs
+        if (isset($settings['debugMode']) && $settings['debugMode']) {
+            $this->logger->debug($message, $context);
+        }
     }
 
     // --- Action Index (Logique métier principale) ---

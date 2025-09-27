@@ -34,7 +34,6 @@ class PageAnalysisService implements LoggerAwareInterface
     protected ?CacheManager $cacheManager;
     protected ConnectionPool $connectionPool;
     protected ?QueryBuilder $queryBuilder = null;
-    protected StopWordsService $stopWordsService;
     protected SiteFinder $siteFinder;
     protected FrontendInterface $cache;
     protected $languageDetector;
@@ -45,7 +44,6 @@ class PageAnalysisService implements LoggerAwareInterface
     public function __construct(
         Context $context,
         ConfigurationManagerInterface $configurationManager,
-        StopWordsService $stopWordsService,
         SiteFinder $siteFinder,
         ?CacheManager $cacheManager = null,
         ?ConnectionPool $connectionPool = null,
@@ -57,7 +55,6 @@ class PageAnalysisService implements LoggerAwareInterface
     ) {
         $this->context = $context;
         $this->configurationManager = $configurationManager;
-        $this->stopWordsService = $stopWordsService;
         $this->siteFinder = $siteFinder;
         $this->siteLanguageService = $siteLanguageService ?? GeneralUtility::makeInstance(SiteLanguageService::class);
         $this->cacheManager = $cacheManager;
@@ -90,6 +87,16 @@ class PageAnalysisService implements LoggerAwareInterface
             $this->languageDetector = $languageDetector ?? GeneralUtility::makeInstance(LanguageDetectionService::class);
             $this->textAnalyzer = $textAnalyzer ?? GeneralUtility::makeInstance(TextAnalysisService::class);  
             $this->textVectorizer = $textVectorizer ?? GeneralUtility::makeInstance(TextVectorizerService::class);
+            
+            // Inject cache into nlp_tools services for better performance
+            if ($this->cache) {
+                if (method_exists($this->textAnalyzer, 'setCache')) {
+                    $this->textAnalyzer->setCache($this->cache);
+                }
+                if (method_exists($this->textVectorizer, 'setCache')) {
+                    $this->textVectorizer->setCache($this->cache);
+                }
+            }
             
             $this->logDebug('nlp_tools services initialized successfully');
         } catch (\Exception $e) {
@@ -649,7 +656,7 @@ class PageAnalysisService implements LoggerAwareInterface
                 } catch (\Exception $e) {
                     $this->logger->error('Error fetching page content', [
                         'pageId' => $page['uid'], 
-                        'language' => $currentLanguageUid, 
+                        'language' => $currentLanguageUid,
                         'exception' => $e->getMessage()
                     ]);
                     $originalContent = '';
@@ -659,21 +666,29 @@ class PageAnalysisService implements LoggerAwareInterface
             if (!empty($originalContent) && is_string($originalContent)) {
                 
                 // Utiliser le service TextAnalysisService de nlp_tools pour un traitement avancé
+                $startTime = microtime(true);
                 try {
                     $processedContent = $this->textAnalyzer->removeStopWords($originalContent, $language);
-                    
+
                     // Optionnel: appliquer le stemming pour de meilleurs résultats
                     if ($this->settings['enableStemming'] ?? true) {
                         $stemmedWords = $this->textAnalyzer->stem($processedContent, $language);
                         $processedContent = implode(' ', $stemmedWords);
                     }
+                    $processingTime = microtime(true) - $startTime;
+                    $this->logDebug('Text processing completed', [
+                        'pageId' => $page['uid'] ?? 'unknown',
+                        'processingTime' => round($processingTime, 3),
+                        'originalLength' => mb_strlen($originalContent),
+                        'processedLength' => mb_strlen($processedContent)
+                    ]);
                 } catch (\Exception $e) {
-                    $this->logError('Error processing text with nlp_tools', [
-                        'field' => $field,
-                        'pageId' => $page['uid'],
+                    $this->logger->error('Error in nlp_tools text processing, falling back to legacy service', [
+                        'pageId' => $page['uid'] ?? 'unknown',
+                        'language' => $language,
+                        'originalLength' => mb_strlen($originalContent),
                         'exception' => $e->getMessage()
                     ]);
-                    
                     // Fallback vers l'ancien service
                     $processedContent = $this->stopWordsService->removeStopWords($originalContent, $language);
                 }
@@ -892,6 +907,8 @@ private function getAllSubpages(int $parentId, int $depth = 0): array
             
             if (empty($tfidfResult['vectors']) || count($tfidfResult['vectors']) < 2) {
                 $this->logger?->warning('Failed to create TF-IDF vectors', [
+                    'page1Length' => mb_strlen($text1),
+                    'page2Length' => mb_strlen($text2),
                     'page1' => $page1['uid'] ?? 'unknown',
                     'page2' => $page2['uid'] ?? 'unknown'
                 ]);

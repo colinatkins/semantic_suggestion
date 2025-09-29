@@ -95,15 +95,15 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
         }
 
         $fieldId = 'task_qualityLevel';
-        $storageThreshold = max(0.05, (float)$taskInfo['qualityLevel'] - 0.1);
+        $storageThreshold = max(0.05, (float)$taskInfo['qualityLevel']);
         $displayThreshold = (float)$taskInfo['qualityLevel'];
 
         $fieldCode = '<div class="form-group">
             <input type="number" class="form-control" name="tx_scheduler[qualityLevel]" id="' . $fieldId . '" value="' . number_format($taskInfo['qualityLevel'], 2) . '" step="0.01" min="0.1" max="1" />
             <small class="form-text text-muted">
                 Defines the minimum similarity score for storing page pairs.<br>
-                Storage threshold = Quality Level - 0.1 (stores broad range for flexibility).<br>
-                Example: 0.3 stores pairs ≥ 0.2, including high similarities like 0.85.<br>
+                Storage threshold = Quality Level (direct mapping).<br>
+                Example: 0.3 stores pairs ≥ 0.3, including high similarities like 0.85.<br>
                 Higher values = better performance but fewer stored pairs.<br>
                 <em>Note: Display filtering is controlled separately in TypoScript.</em>
             </small>

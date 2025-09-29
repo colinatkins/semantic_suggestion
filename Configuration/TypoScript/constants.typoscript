@@ -7,11 +7,11 @@ plugin.tx_semanticsuggestion_suggestions {
     # Unified Quality Settings
     settings {
          # cat=semantic_suggestion:Quality Control/100/001; type=float; label=Display Quality Level (0.1-1.0) - Filters suggestions shown to users
-         # Can be ≤ Storage Quality Level - 0.1 from scheduler task
-         # Can be = Storage Quality Level for additional quality filtering
-         # Can be < Storage Quality Level to show all stored suggestions
+         # Must be ≤ Storage Quality Level from scheduler task
+         # Can be = Storage Quality Level for simple configuration
+         # Can be < Storage Quality Level to show fewer suggestions
          # In doubt: Use the same value as scheduler task for simplicity
-         # Example: Scheduler = 0.3 → Display = 0.3 (recommended for quality)
+         # Example: Scheduler = 0.3 → Display can be 0.1-0.3 (recommended: 0.3)
          # Higher values = fewer but higher-quality suggestions
          qualityLevel = 0.3
 

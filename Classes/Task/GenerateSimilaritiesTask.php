@@ -76,16 +76,16 @@ class GenerateSimilaritiesTask extends AbstractTask
     {
         // If qualityLevel is at default but minimumSimilarity was customized
         if ($this->qualityLevel === 0.3 && $this->minimumSimilarity !== 0.1) {
-            // Migrate from legacy minimumSimilarity
-            $this->qualityLevel = max(0.1, $this->minimumSimilarity + 0.1);
+            // Migrate from legacy minimumSimilarity (now direct mapping)
+            $this->qualityLevel = max(0.1, $this->minimumSimilarity);
             $this->logger->info('Migrated from legacy minimumSimilarity', [
                 'legacy' => $this->minimumSimilarity,
                 'qualityLevel' => $this->qualityLevel
             ]);
         }
 
-        // Always sync minimumSimilarity with qualityLevel for backward compatibility
-        $this->minimumSimilarity = max(0.05, $this->qualityLevel - 0.1);
+        // Storage threshold equals quality level (no -0.1 offset)
+        $this->minimumSimilarity = max(0.05, $this->qualityLevel);
     }
 
     /**

@@ -343,12 +343,12 @@ The configuration separates **what gets stored** (Scheduler) from **what gets di
 ```
 🎯 CONFIGURATION FLOW:
 ┌─────────────────────┐    ┌──────────────────┐    ┌─────────────────────┐    ┌──────────────────┐
-│ Storage QualityLevel│───▶│  Storage: -0.1   │───▶│ Display QualityLevel│───▶│  Display Filter   │
-│ (Scheduler Task)    │    │  (broad range)   │    │ (TypoScript)        │    │  (quality)       │
-│ 0.3 → stores ≥0.2   │    │                  │    │ 0.3 → shows ≥0.3    │    │                  │
+│ Storage QualityLevel│───▶│  Storage: direct │───▶│ Display QualityLevel│───▶│  Display Filter   │
+│ (Scheduler Task)    │    │  (exact match)   │    │ (TypoScript)        │    │  (quality)       │
+│ 0.3 → stores ≥0.3   │    │                  │    │ 0.4 → shows ≥0.4    │    │                  │
 └─────────────────────┘    └──────────────────┘    └─────────────────────┘    └──────────────────┘
    CONTROLS DATABASE         SAVES SIMILARITIES      CONTROLS FRONTEND       USER SEES RESULTS
-   STORAGE EFFICIENCY        FOR FLEXIBILITY         DISPLAY QUALITY         FILTERED SUGGESTIONS
+   STORAGE EFFICIENCY        FOR PRECISION           DISPLAY QUALITY         FILTERED SUGGESTIONS
 ```
 
 **Benefits:**

@@ -71,10 +71,10 @@ plugin.tx_semanticsuggestion_suggestions {
          # ========================================
          # qualityLevel: Filters which stored suggestions are shown to users
          # Storage is controlled by scheduler task - this only affects display
-         # Can be ≤ Storage Quality Level to show all stored pairs
-         # Can be > Storage Quality Level - 0.1 for quality filtering
+         # Must be ≤ Storage Quality Level from scheduler task
          # Can be = Storage Quality Level for simple configuration
-         # Example: Scheduler = 0.3 → Display = 0.3 shows all, Display = 0.7 shows only best matches
+         # Can be < Storage Quality Level to show fewer suggestions
+         # Example: Scheduler = 0.3 → Display = 0.3 shows all, Display = 0.4 shows only best matches
          # Higher values = fewer but higher-quality suggestions
 
          # TF-IDF optimized values:

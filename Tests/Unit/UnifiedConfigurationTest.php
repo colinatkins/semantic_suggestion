@@ -29,7 +29,7 @@ class UnifiedConfigurationTest extends UnitTestCase
         $task->qualityLevel = 0.3;
         $task->initializeQualityLevel();
 
-        $this->assertEquals(0.2, $task->minimumSimilarity, 'Storage threshold should be qualityLevel - 0.1');
+        $this->assertEquals(0.3, $task->minimumSimilarity, 'Storage threshold should equal qualityLevel');
     }
 
     /**
@@ -45,9 +45,9 @@ class UnifiedConfigurationTest extends UnitTestCase
 
         $task->initializeQualityLevel();
 
-        // Should migrate to qualityLevel = minimumSimilarity + 0.1
-        $this->assertEquals(0.6, $task->qualityLevel, 'Should migrate legacy minimumSimilarity to qualityLevel');
-        $this->assertEquals(0.5, $task->minimumSimilarity, 'minimumSimilarity should be preserved');
+        // Should migrate to qualityLevel = minimumSimilarity (direct mapping)
+        $this->assertEquals(0.5, $task->qualityLevel, 'Should migrate legacy minimumSimilarity to qualityLevel');
+        $this->assertEquals(0.5, $task->minimumSimilarity, 'minimumSimilarity should equal qualityLevel');
     }
 
     /**
@@ -65,7 +65,7 @@ class UnifiedConfigurationTest extends UnitTestCase
         // Test high quality level
         $task->qualityLevel = 0.9;
         $task->initializeQualityLevel();
-        $this->assertEquals(0.8, $task->minimumSimilarity, 'High quality should compute correctly');
+        $this->assertEquals(0.9, $task->minimumSimilarity, 'Storage should equal quality level');
     }
 
     /**
@@ -122,7 +122,7 @@ class UnifiedConfigurationTest extends UnitTestCase
         $task->initializeQualityLevel();
 
         $this->assertEquals(0.3, $task->qualityLevel);
-        $this->assertEquals(0.2, $task->minimumSimilarity, 'Should sync with qualityLevel');
+        $this->assertEquals(0.3, $task->minimumSimilarity, 'Should sync with qualityLevel');
 
         // Scenario 2: Upgrade from v2.x (only minimumSimilarity customized)
         $task2 = new GenerateSimilaritiesTask();
@@ -130,7 +130,7 @@ class UnifiedConfigurationTest extends UnitTestCase
         $task2->minimumSimilarity = 0.4; // legacy custom
         $task2->initializeQualityLevel();
 
-        $this->assertEquals(0.5, $task2->qualityLevel, 'Should migrate to qualityLevel');
-        $this->assertEquals(0.4, $task2->minimumSimilarity, 'Should preserve legacy value');
+        $this->assertEquals(0.4, $task2->qualityLevel, 'Should migrate to qualityLevel');
+        $this->assertEquals(0.4, $task2->minimumSimilarity, 'Should sync with qualityLevel');
     }
 }

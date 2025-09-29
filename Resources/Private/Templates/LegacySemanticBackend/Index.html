@@ -395,9 +395,112 @@
                             </div>
                         </div>
                     </div>
-                </f:if>
+                 </f:if>
 
-                <!-- Footer with useful information -->
+                 <!-- Quality Configuration Guide -->
+                 <div class="card mb-4 border-primary">
+                     <div class="card-header bg-primary">
+                         <h5 class="card-title mb-0">
+                             <core:icon identifier="actions-info" />
+                             How Quality Settings Work
+                         </h5>
+                     </div>
+                     <div class="card-body">
+                         <div class="alert alert-info">
+                             <strong>Simple Rule:</strong> Scheduler decides what to <em>save</em>, TypoScript decides what to <em>show</em>
+                         </div>
+
+                         <div class="row d-flex align-items-stretch">
+                             <div class="col-md-6">
+                                 <div class="card border-success mb-3 h-100">
+                                     <div class="card-header bg-success">
+                                         <h6 class="mb-0"><core:icon identifier="actions-database" /> Storage (Scheduler)</h6>
+                                     </div>
+                                     <div class="card-body">
+                                         <p class="small mb-2">Decides which page pairs are worth saving for later display.</p>
+                                         <div class="bg-light p-2 rounded">
+                                             <strong>Example:</strong> Setting = 0.3<br>
+                                             <strong>Saves pairs with score:</strong> ≥ 0.2 (setting - 0.1)<br>
+                                             <strong>Why -0.1?</strong> Stores extra data for flexibility
+                                         </div>
+                                         <small class="text-muted">Higher = fewer pairs stored, better performance</small>
+                                     </div>
+                                 </div>
+                             </div>
+                             <div class="col-md-6">
+                                 <div class="card border-warning mb-3 h-100">
+                                     <div class="card-header bg-warning">
+                                         <h6 class="mb-0"><core:icon identifier="actions-eye" /> Display (TypoScript)</h6>
+                                     </div>
+                                     <div class="card-body">
+                                         <p class="small mb-2">Controls what suggestions users actually see on the frontend.</p>
+                                         <div class="bg-light p-2 rounded">
+                                             <strong>Example:</strong> Setting = 0.4<br>
+                                             <strong>Shows:</strong> Pairs with score ≥ 0.4
+                                         </div>
+                                         <small class="text-muted">Higher = fewer but higher-quality suggestions</small>
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
+
+                         <div class="mt-3">
+                             <h6><strong>Visual Example</strong></h6>
+                             <div class="bg-light p-3 rounded">
+                                 <div class="row text-center mb-2">
+                                     <div class="col-12">
+                                         <strong>Similarity Scores Available:</strong>
+                                     </div>
+                                 </div>
+                                 <div class="row text-center">
+                                     <div class="col-2">0.1</div>
+                                     <div class="col-2">0.2</div>
+                                     <div class="col-2">0.3</div>
+                                     <div class="col-2">0.4</div>
+                                     <div class="col-2">0.5</div>
+                                     <div class="col-2">0.6+</div>
+                                 </div>
+                                 <hr>
+                                 <div class="row text-center mb-2">
+                                     <div class="col-12">
+                                         <span class="badge bg-success">Scheduler = 0.3</span> → Saves from 0.2 and up
+                                     </div>
+                                 </div>
+                                 <div class="row text-center">
+                                     <div class="col-2"><span class="text-muted">-</span></div>
+                                     <div class="col-2"><span class="text-success">STORED</span></div>
+                                     <div class="col-2"><span class="text-success">STORED</span></div>
+                                     <div class="col-2"><span class="text-success">STORED</span></div>
+                                     <div class="col-2"><span class="text-success">STORED</span></div>
+                                     <div class="col-2"><span class="text-success">STORED</span></div>
+                                 </div>
+                                 <hr>
+                                 <div class="row text-center mb-2">
+                                     <div class="col-12">
+                                         <span class="badge bg-warning">TypoScript = 0.4</span> → Shows from 0.4 and up
+                                     </div>
+                                 </div>
+                                 <div class="row text-center">
+                                     <div class="col-2"><span class="text-muted">-</span></div>
+                                     <div class="col-2"><span class="text-muted">-</span></div>
+                                     <div class="col-2"><span class="text-muted">-</span></div>
+                                     <div class="col-2"><span class="text-warning">SHOWN</span></div>
+                                     <div class="col-2"><span class="text-warning">SHOWN</span></div>
+                                     <div class="col-2"><span class="text-warning">SHOWN</span></div>
+                                 </div>
+                             </div>
+                             <p class="small text-muted mt-2">
+                                 <strong>Result:</strong> Only pairs with score ≥ 0.4 are shown to users (from the stored pairs ≥ 0.2)
+                             </p>
+                         </div>
+
+                         <div class="alert alert-success mt-3">
+                             <strong>Pro Tip:</strong> Start with the same value (0.3) in both places for simple configuration
+                         </div>
+                     </div>
+                 </div>
+
+                 <!-- Footer with useful information -->
                 <div class="card border-light">
                     <div class="card-body bg-light">
                         <div class="row">

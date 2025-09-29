@@ -385,7 +385,7 @@
 
                  <!-- Quality Configuration Guide -->
                  <div class="card mb-4 border-primary">
-                     <div class="card-header bg-primary text-white">
+                     <div class="card-header bg-primary">
                          <h5 class="card-title mb-0">
                              <core:icon identifier="actions-info" />
                              How Quality Settings Work
@@ -396,34 +396,33 @@
                              <strong>Simple Rule:</strong> Scheduler decides what to <em>save</em>, TypoScript decides what to <em>show</em>
                          </div>
 
-                         <div class="row">
+                          <div class="row d-flex align-items-stretch">
                              <div class="col-md-6">
-                                 <div class="card border-success mb-3">
-                                     <div class="card-header bg-success text-white">
+                                 <div class="card border-success mb-3 h-100">
+                                     <div class="card-header bg-success">
                                          <h6 class="mb-0"><core:icon identifier="actions-database" /> Storage (Scheduler)</h6>
                                      </div>
                                      <div class="card-body">
-                                         <p class="small mb-2">What similarity pairs get saved to database</p>
+                                         <p class="small mb-2">Decides which page pairs are worth saving for later display.</p>
                                          <div class="bg-light p-2 rounded">
-                                             <strong>Threshold:</strong> Quality Level - 0.1<br>
                                              <strong>Example:</strong> Setting = 0.3<br>
-                                             <strong>Saves:</strong> Pairs with score ≥ 0.2
+                                             <strong>Saves pairs with score:</strong> ≥ 0.2 (setting - 0.1)<br>
+                                             <strong>Why -0.1?</strong> Stores extra data for flexibility
                                          </div>
                                          <small class="text-muted">Higher = fewer pairs stored, faster analysis</small>
                                      </div>
                                  </div>
                              </div>
                              <div class="col-md-6">
-                                 <div class="card border-warning mb-3">
+                                 <div class="card border-warning mb-3 h-100">
                                      <div class="card-header bg-warning">
                                          <h6 class="mb-0"><core:icon identifier="actions-eye" /> Display (TypoScript)</h6>
                                      </div>
                                      <div class="card-body">
-                                         <p class="small mb-2">What suggestions users see on frontend</p>
+                                         <p class="small mb-2">Controls what suggestions users actually see on the frontend.</p>
                                          <div class="bg-light p-2 rounded">
-                                             <strong>Threshold:</strong> Quality Level<br>
-                                             <strong>Example:</strong> Setting = 0.3<br>
-                                             <strong>Shows:</strong> Pairs with score ≥ 0.3
+                                             <strong>Example:</strong> Setting = 0.4<br>
+                                             <strong>Shows:</strong> Pairs with score ≥ 0.4
                                          </div>
                                          <small class="text-muted">Higher = fewer but better suggestions</small>
                                      </div>
@@ -462,23 +461,23 @@
                                      <div class="col-2"><span class="text-success">STORED</span></div>
                                  </div>
                                  <hr>
-                                 <div class="row text-center mb-2">
-                                     <div class="col-12">
-                                         <span class="badge bg-warning">TypoScript = 0.3</span> → Shows from 0.3 and up
-                                     </div>
-                                 </div>
-                                 <div class="row text-center">
-                                     <div class="col-2"><span class="text-muted">-</span></div>
-                                     <div class="col-2"><span class="text-muted">-</span></div>
-                                     <div class="col-2"><span class="text-warning">SHOWN</span></div>
-                                     <div class="col-2"><span class="text-warning">SHOWN</span></div>
-                                     <div class="col-2"><span class="text-warning">SHOWN</span></div>
-                                     <div class="col-2"><span class="text-warning">SHOWN</span></div>
-                                 </div>
+                                  <div class="row text-center mb-2">
+                                      <div class="col-12">
+                                          <span class="badge bg-warning">TypoScript = 0.4</span> → Shows from 0.4 and up
+                                      </div>
+                                  </div>
+                                  <div class="row text-center">
+                                      <div class="col-2"><span class="text-muted">-</span></div>
+                                      <div class="col-2"><span class="text-muted">-</span></div>
+                                      <div class="col-2"><span class="text-muted">-</span></div>
+                                      <div class="col-2"><span class="text-warning">SHOWN</span></div>
+                                      <div class="col-2"><span class="text-warning">SHOWN</span></div>
+                                      <div class="col-2"><span class="text-warning">SHOWN</span></div>
+                                  </div>
                              </div>
-                             <p class="small text-muted mt-2">
-                                 <strong>Result:</strong> Only pairs with score ≥ 0.3 are shown to users (from the stored pairs ≥ 0.2)
-                             </p>
+                              <p class="small text-muted mt-2">
+                                  <strong>Result:</strong> Only pairs with score ≥ 0.4 are shown to users (from the stored pairs ≥ 0.2)
+                              </p>
                          </div>
 
                          <div class="alert alert-success mt-3">

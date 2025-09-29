@@ -99,18 +99,19 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
         $displayThreshold = (float)$taskInfo['qualityLevel'];
 
         $fieldCode = '<div class="form-group">
-            <input type="number" class="form-control" name="tx_scheduler[qualityLevel]" id="' . $fieldId . '" value="' . number_format($displayThreshold, 2) . '" step="0.01" min="0.1" max="1" />
+            <input type="number" class="form-control" name="tx_scheduler[qualityLevel]" id="' . $fieldId . '" value="' . number_format($taskInfo['qualityLevel'], 2) . '" step="0.01" min="0.1" max="1" />
             <small class="form-text text-muted">
-                <strong>📊 Unified Configuration:</strong><br>
-                • Storage Threshold: ' . number_format($storageThreshold, 2) . ' (stores broad range for flexibility)<br>
-                • Display Threshold: ' . number_format($displayThreshold, 2) . ' (shows quality suggestions)<br>
-                • Replaces old minimumSimilarity/proximityThreshold split
+                Defines the minimum similarity score for storing page pairs.<br>
+                Storage threshold = Quality Level - 0.1 (stores broad range for flexibility).<br>
+                Example: 0.3 stores pairs ≥ 0.2, including high similarities like 0.85.<br>
+                Higher values = better performance but fewer stored pairs.<br>
+                <em>Note: Display filtering is controlled separately in TypoScript.</em>
             </small>
         </div>';
 
         $additionalFields[$fieldId] = [
             'code' => $fieldCode,
-            'label' => LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.task.quality_level', 'semantic_suggestion') ?? 'Quality Level (0.1-1.0) - Unified threshold for storage and display',
+            'label' => LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.task.storage_quality_level', 'semantic_suggestion') ?? 'Storage Quality Level (0.1-1.0) - Controls what similarities get stored in database',
             'cshKey' => '_MOD_system_txschedulerM1',
             'cshLabel' => $fieldId
         ];

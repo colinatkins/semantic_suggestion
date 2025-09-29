@@ -334,26 +334,27 @@ plugin.tx_semanticsuggestion_suggestions.settings {
 
 ## Configuration
 
-🎯 **NEW in v3.1**: **Unified Quality Configuration** replaces the old complex hierarchy! Now use a single `qualityLevel` parameter instead of managing separate `minimumSimilarity` and `proximityThreshold`. Full backward compatibility maintained.
+🎯 **NEW in v3.1**: **Storage vs Display Quality Configuration** for clarity! Separate `qualityLevel` parameters for storage (Scheduler) and display (TypoScript) with clear explanations.
 
-### 🚀 Unified Configuration (v3.1+)
+### 🚀 Storage vs Display Configuration (v3.1+)
 
-The new unified configuration eliminates the confusing hierarchy and dual parameters. Now you only need **ONE parameter** for quality control:
+The configuration separates **what gets stored** (Scheduler) from **what gets displayed** (TypoScript) for maximum flexibility:
 
 ```
-🎯 UNIFIED CONFIGURATION FLOW:
-┌─────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│   qualityLevel  │───▶│  Storage: -0.1   │───▶│  Display: same   │
-│   (0.1 - 1.0)   │    │  (broad range)   │    │  (quality)       │
-└─────────────────┘    └──────────────────┘    └──────────────────┘
-    ONE PARAMETER           AUTOMATIC            USER SEES QUALITY
-    TO MAINTAIN             OPTIMIZATION         SUGGESTIONS
+🎯 CONFIGURATION FLOW:
+┌─────────────────────┐    ┌──────────────────┐    ┌─────────────────────┐    ┌──────────────────┐
+│ Storage QualityLevel│───▶│  Storage: -0.1   │───▶│ Display QualityLevel│───▶│  Display Filter   │
+│ (Scheduler Task)    │    │  (broad range)   │    │ (TypoScript)        │    │  (quality)       │
+│ 0.3 → stores ≥0.2   │    │                  │    │ 0.3 → shows ≥0.3    │    │                  │
+└─────────────────────┘    └──────────────────┘    └─────────────────────┘    └──────────────────┘
+   CONTROLS DATABASE         SAVES SIMILARITIES      CONTROLS FRONTEND       USER SEES RESULTS
+   STORAGE EFFICIENCY        FOR FLEXIBILITY         DISPLAY QUALITY         FILTERED SUGGESTIONS
 ```
 
 **Benefits:**
-- ✅ **Single parameter** instead of complex hierarchy
-- ✅ **Automatic optimization** (storage = qualityLevel - 0.1, display = qualityLevel)
-- ✅ **No more conflicts** between Scheduler and TypoScript
+- ✅ **Clear separation** of storage vs display logic
+- ✅ **Flexible filtering** (display can be stricter than storage)
+- ✅ **Performance optimization** (store broad, display selective)
 - ✅ **Backward compatibility** with legacy configurations
 - ✅ **Self-explanatory** values (higher = more selective)
 

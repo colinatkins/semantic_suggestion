@@ -66,21 +66,24 @@ plugin.tx_semanticsuggestion_suggestions {
         minTextLength = 50
         confidenceThreshold = 0.3
         
-        # ========================================
-        # UNIFIED QUALITY CONFIGURATION (v3.1+)
-        # ========================================
-        # qualityLevel replaces the old proximityThreshold/minimumSimilarity split:
-        # - Storage Threshold = qualityLevel - 0.1 (broad storage for flexibility)
-        # - Display Threshold = qualityLevel (quality suggestions shown to users)
-        # - Single parameter to maintain, no more complex hierarchy
+         # ========================================
+         # DISPLAY QUALITY CONFIGURATION
+         # ========================================
+         # qualityLevel: Filters which stored suggestions are shown to users
+         # Storage is controlled by scheduler task - this only affects display
+         # Can be ≤ Storage Quality Level to show all stored pairs
+         # Can be > Storage Quality Level - 0.1 for quality filtering
+         # Can be = Storage Quality Level for simple configuration
+         # Example: Scheduler = 0.3 → Display = 0.3 shows all, Display = 0.7 shows only best matches
+         # Higher values = fewer but higher-quality suggestions
 
-        # TF-IDF optimized values:
-        qualityLevel = 0.3           # Standard sites
-        # qualityLevel = 0.25        # German sites (compound words)
-        # qualityLevel = 0.4         # High-quality only sites
+         # TF-IDF optimized values:
+         qualityLevel = 0.3           # Standard sites
+         # qualityLevel = 0.25        # German sites (compound words)
+         # qualityLevel = 0.4         # High-quality only sites
 
-        # Legacy support (automatically computed from qualityLevel)
-        proximityThreshold = 0.3     # Fallback for old templates
+         # Legacy support (automatically computed from qualityLevel)
+         proximityThreshold = 0.3     # Fallback for old templates
 
         # Debug
         debugMode = 0

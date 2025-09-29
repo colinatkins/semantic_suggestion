@@ -6,11 +6,14 @@
 plugin.tx_semanticsuggestion_suggestions {
     # Unified Quality Settings
     settings {
-        # cat=semantic_suggestion:Quality Control/100/001; type=float; label=Quality Level (Unified)
-        # Single threshold for suggestion quality (0.1-1.0). Replaces old proximityThreshold/minimumSimilarity split.
-        # Storage = qualityLevel - 0.1 (broad), Display = qualityLevel (quality)
-        # TF-IDF optimized: 0.25-0.4 for most sites, 0.2 for German compound words
-        qualityLevel = 0.3
+         # cat=semantic_suggestion:Quality Control/100/001; type=float; label=Display Quality Level (0.1-1.0) - Filters suggestions shown to users
+         # Can be ≤ Storage Quality Level - 0.1 from scheduler task
+         # Can be = Storage Quality Level for additional quality filtering
+         # Can be < Storage Quality Level to show all stored suggestions
+         # In doubt: Use the same value as scheduler task for simplicity
+         # Example: Scheduler = 0.3 → Display = 0.3 (recommended for quality)
+         # Higher values = fewer but higher-quality suggestions
+         qualityLevel = 0.3
 
         # cat=semantic_suggestion:Frontend Display/100/002; type=int+; label=Maximum Suggestions
         # The maximum number of similar pages to display in the suggestions list.

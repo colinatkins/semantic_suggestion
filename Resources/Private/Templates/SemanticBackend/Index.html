@@ -381,9 +381,48 @@
                             </div>
                         </div>
                     </div>
-                </f:if>
+                 </f:if>
 
-                <!-- Footer with useful information -->
+                 <!-- Quality Configuration Guide -->
+                 <div class="card mb-4 border-info">
+                     <div class="card-header bg-info text-white">
+                         <h5 class="card-title mb-0">
+                             <core:icon identifier="actions-info" />
+                             Quality Configuration Guide
+                         </h5>
+                     </div>
+                     <div class="card-body">
+                         <div class="row">
+                             <div class="col-md-6">
+                                 <h6><strong>Storage (Scheduler Task)</strong></h6>
+                                 <p class="small">Controls what similarity pairs get stored in the database for analysis.</p>
+                                 <ul class="small">
+                                     <li>Storage Threshold = Quality Level - 0.1</li>
+                                     <li>Example: 0.3 stores pairs ≥ 0.2</li>
+                                     <li>Higher values = fewer stored pairs, better performance</li>
+                                 </ul>
+                             </div>
+                             <div class="col-md-6">
+                                 <h6><strong>Display (TypoScript)</strong></h6>
+                                 <p class="small">Controls what suggestions users actually see on the frontend.</p>
+                                 <ul class="small">
+                                     <li>Display Threshold = Quality Level</li>
+                                     <li>Example: 0.3 shows pairs ≥ 0.3</li>
+                                     <li>Higher values = fewer but higher-quality suggestions</li>
+                                 </ul>
+                             </div>
+                         </div>
+                         <div class="mt-3">
+                             <h6><strong>Configuration Flow Example</strong></h6>
+                             <pre class="bg-light p-2 small"><code>Storage: [0.2] ──── [0.5] ──── [0.8] ──── [1.0] (stored pairs)
+Display:     [0.3] ──── [0.7] ──── [0.9]         (shown to users)
+             ↑ Shows this range only</code></pre>
+                             <p class="small text-muted">In this example: Scheduler=0.3 (stores ≥0.2), TypoScript=0.3 (shows ≥0.3 from stored pairs)</p>
+                         </div>
+                     </div>
+                 </div>
+
+                 <!-- Footer with useful information -->
                 <div class="card border-light">
                     <div class="card-body bg-light">
                         <div class="row">

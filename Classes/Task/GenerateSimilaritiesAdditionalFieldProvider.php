@@ -99,7 +99,7 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
         $displayThreshold = (float)$taskInfo['qualityLevel'];
 
         $fieldCode = '<div class="form-group">
-            <input type="number" class="form-control" name="tx_scheduler[qualityLevel]" id="' . $fieldId . '" value="' . number_format($taskInfo['qualityLevel'], 2) . '" step="0.01" min="0.1" max="1" />
+            <input type="number" class="form-control" name="tx_scheduler[qualityLevel]" id="' . $fieldId . '" value="' . number_format((float)$taskInfo['qualityLevel'], 2) . '" step="0.01" min="0.1" max="1" />
             <small class="form-text text-muted">
                 Defines the minimum similarity score for storing page pairs.<br>
                 Storage threshold = Quality Level (direct mapping).<br>

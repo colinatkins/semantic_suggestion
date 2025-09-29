@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2025-09-29
+
+### Fixed
+- Critical bug fix: TypeError in scheduler task form when saving qualityLevel (number_format expects float, not string)
+- Fixed nlp_tools integration by replacing missing stopWordsService with textAnalyzer
+
+### Improved
+- Simplified storage logic: qualityLevel now directly sets storage threshold (removed -0.1 offset for better intuition)
+- Enhanced backend quality configuration guide with improved visual design and clarity
+- Better separation of storage vs display concepts in UI labels and descriptions
+- Improved color contrast and vertical alignment in backend module cards
+- Updated migration logic for legacy configurations to use direct mapping
+
+### Documentation
+- Clarified storage vs display quality level concepts throughout the codebase
+- Added visual examples and diagrams in backend module for better user understanding
+- Updated README with corrected configuration flow and examples
+- Improved TypoScript comments with clearer explanations and constraints
+
 ## [2.3.1] - 2025-09-17
 
 ### Fixed

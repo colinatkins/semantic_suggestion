@@ -483,13 +483,11 @@ class PageAnalysisService implements LoggerAwareInterface
         }
     
         $language = $this->getCurrentLanguage();
-        $stopwords = $this->stopWordsService->getStopWordsForLanguage($language);
     
         $this->logDebug('Starting page analysis', [
             'pageCount' => count($pages),
             'languageUid' => $currentLanguageUid,
-            'language' => $language,
-            'stopwordsCount' => count($stopwords)
+            'language' => $language
         ]);
     
     
@@ -689,8 +687,8 @@ class PageAnalysisService implements LoggerAwareInterface
                         'originalLength' => mb_strlen($originalContent),
                         'exception' => $e->getMessage()
                     ]);
-                    // Fallback vers l'ancien service
-                    $processedContent = $this->stopWordsService->removeStopWords($originalContent, $language);
+                    // Fallback: utiliser textAnalyzer de base sans stemming
+                    $processedContent = $this->textAnalyzer->removeStopWords($originalContent, $language);
                 }
 
                 $preparedData[$field] = [

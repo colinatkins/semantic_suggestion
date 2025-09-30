@@ -52,7 +52,13 @@ class GenerateSimilaritiesTask extends AbstractTask
      * @var bool
      */
     public $recursiveExclusion = true;
-    
+
+    /**
+     * Language ID to process (-1 for all languages)
+     * @var int
+     */
+    public $languageId = -1;
+
     protected ?LoggerInterface $logger = null;
     protected ?PageAnalysisService $pageAnalysisService = null;
     protected ?ConnectionPool $connectionPool = null;
@@ -111,35 +117,55 @@ class GenerateSimilaritiesTask extends AbstractTask
                 'startPageId' => $this->startPageId,
                 'qualityLevel' => $this->qualityLevel,
                 'storageThreshold' => $this->minimumSimilarity,
-                'recursiveExclusion' => $this->recursiveExclusion
+                'recursiveExclusion' => $this->recursiveExclusion,
+                'languageId' => $this->languageId
             ]);
 
             // Convert exclude pages list to array
-            $excludePages = !empty($this->excludePages) 
-                ? GeneralUtility::intExplode(',', $this->excludePages, true) 
+            $excludePages = !empty($this->excludePages)
+                ? GeneralUtility::intExplode(',', $this->excludePages, true)
                 : [];
-            
-            // Retrieve all pages from startPageId
-            $pages = $this->getPages($this->startPageId, 999, 0, $excludePages);
-
-            if (empty($pages)) {
-                $this->logger->warning('No pages found', [
-                    'startPageId' => $this->startPageId
-                ]);
-                return true; // Retourner true car la tâche s'est exécutée correctement, même sans données
-            }
 
             // Analysis for each language
             $siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
             $site = $siteFinder->getSiteByPageId($this->startPageId);
-            
-            foreach ($site->getAllLanguages() as $language) {
+
+            $languagesToProcess = [];
+            if ($this->languageId >= 0) {
+                // Process only specified language
+                try {
+                    $specificLanguage = $site->getLanguageById($this->languageId);
+                    $languagesToProcess = [$specificLanguage];
+                } catch (\Exception $e) {
+                    $this->logger->error('Specified language not found', [
+                        'languageId' => $this->languageId,
+                        'exception' => $e->getMessage()
+                    ]);
+                    return false;
+                }
+            } else {
+                // Process all languages
+                $languagesToProcess = $site->getAllLanguages();
+            }
+
+            foreach ($languagesToProcess as $language) {
                 $languageId = $language->getLanguageId();
-                
+
                 $this->logger->info('Processing language', [
                     'startPageId' => $this->startPageId,
                     'language' => $languageId
                 ]);
+
+                // Retrieve pages for this language
+                $pages = $this->getPages($this->startPageId, 999, $languageId, $excludePages);
+
+                if (empty($pages)) {
+                    $this->logger->warning('No pages found for language', [
+                        'startPageId' => $this->startPageId,
+                        'languageId' => $languageId
+                    ]);
+                    continue; // Continue to next language
+                }
 
                 // Analyze similarities
                 $analysisData = $this->pageAnalysisService->analyzePages($pages, $languageId);
@@ -369,6 +395,15 @@ class GenerateSimilaritiesTask extends AbstractTask
         // Storage threshold (computed)
         $storageLabel = LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.info.storage_threshold', 'semantic_suggestion') ?? 'Storage Threshold';
         $info[] = '💾 ' . $storageLabel . ': ' . number_format($this->minimumSimilarity, 2);
+
+        // Add language limitation
+        $languageLabel = LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.info.language', 'semantic_suggestion') ?? 'Language';
+        if ($this->languageId >= 0) {
+            $info[] = '🌍 ' . $languageLabel . ': ' . $this->languageId;
+        } else {
+            $allLabel = LocalizationUtility::translate('LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:scheduler.info.all_languages', 'semantic_suggestion') ?? 'All languages';
+            $info[] = '🌍 ' . $languageLabel . ': ' . $allLabel;
+        }
 
         return implode(' | ', $info);
     }

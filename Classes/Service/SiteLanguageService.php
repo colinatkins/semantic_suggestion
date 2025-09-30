@@ -74,7 +74,7 @@ class SiteLanguageService implements LoggerAwareInterface
                 
                 $this->languageCache[$cacheKey] = $languageCode;
                 
-                $this->logger->debug('Language code detected from site configuration', [
+                $this->logger->info('Language code detected from site configuration', [
                     'languageUid' => $languageUid,
                     'languageCode' => $languageCode,
                     'locale' => $locale->getName(),
@@ -131,7 +131,7 @@ class SiteLanguageService implements LoggerAwareInterface
                 ];
             }
 
-            $this->logger->debug('All site languages detected', [
+            $this->logger->info('All site languages detected', [
                 'siteIdentifier' => $site->getIdentifier(),
                 'languages' => array_map(fn($lang) => "{$lang['uid']}:{$lang['code']}", $languages)
             ]);
@@ -158,7 +158,7 @@ class SiteLanguageService implements LoggerAwareInterface
         
         $siteLanguageCode = $this->getLanguageCodeByUid($languageUid, $rootPageId);
         if ($siteLanguageCode !== null) {
-            $this->logger->debug('Language detected from TYPO3 site config', [
+            $this->logger->info('Language detected from TYPO3 site config', [
                 'pageId' => $pageData['uid'] ?? 'unknown',
                 'languageUid' => $languageUid,
                 'detectedCode' => $siteLanguageCode
@@ -172,7 +172,7 @@ class SiteLanguageService implements LoggerAwareInterface
             if (!empty($contentText)) {
                 try {
                     $detectedCode = $languageDetector->detectLanguage($contentText);
-                    $this->logger->debug('Language detected from content analysis', [
+                    $this->logger->info('Language detected from content analysis', [
                         'pageId' => $pageData['uid'] ?? 'unknown',
                         'detectedCode' => $detectedCode,
                         'contentLength' => strlen($contentText)
@@ -189,7 +189,7 @@ class SiteLanguageService implements LoggerAwareInterface
 
         // Third try: Default fallback
         $defaultCode = 'en';
-        $this->logger->debug('Using fallback language', [
+        $this->logger->info('Using fallback language', [
             'pageId' => $pageData['uid'] ?? 'unknown',
             'fallbackCode' => $defaultCode
         ]);

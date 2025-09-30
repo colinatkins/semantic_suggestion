@@ -48,11 +48,8 @@ class LegacySemanticBackendController extends ActionController
     // --- Méthode pour le logging (simplifiée) ---
     private function logDebug(string $message, array $context = []): void
     {
-        // Récupérer les settings depuis PageAnalysisService
-        $settings = $this->pageAnalysisService->getSettings();
-
-        // Vérifier si debugMode est activé avant d'écrire les logs
-        if (isset($settings['debugMode']) && $settings['debugMode']) {
+        // Vérifier si le mode debug TYPO3 est activé avant d'écrire les logs
+        if ($GLOBALS['TYPO3_CONF_VARS']['SYS']['debug'] ?? false) {
             $this->logger->debug($message, $context);
         }
     }

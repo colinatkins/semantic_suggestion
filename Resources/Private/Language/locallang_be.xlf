@@ -312,6 +312,18 @@
             <trans-unit id="scheduler.info.minimum_threshold">
                 <source>Minimum threshold</source>
             </trans-unit>
+            <trans-unit id="scheduler.info.quality_level">
+                <source>Quality Level</source>
+            </trans-unit>
+            <trans-unit id="scheduler.info.storage_threshold">
+                <source>Storage Threshold</source>
+            </trans-unit>
+            <trans-unit id="scheduler.info.language">
+                <source>Language</source>
+            </trans-unit>
+            <trans-unit id="scheduler.info.all_languages">
+                <source>All languages</source>
+            </trans-unit>
 
             <!-- Scheduler Task Registration -->
             <trans-unit id="scheduler.task.title">

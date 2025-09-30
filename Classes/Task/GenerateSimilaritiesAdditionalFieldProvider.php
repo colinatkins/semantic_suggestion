@@ -116,6 +116,31 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
             'cshLabel' => $fieldId
         ];
 
+        // NEW: Language ID field
+        if (!isset($taskInfo['languageId'])) {
+            if ($task instanceof GenerateSimilaritiesTask) {
+                $taskInfo['languageId'] = $task->languageId;
+            } else {
+                $taskInfo['languageId'] = -1; // Default: all languages
+            }
+        }
+
+        $fieldId = 'task_languageId';
+        $fieldCode = '<div class="form-group">
+            <input type="number" class="form-control" name="tx_scheduler[languageId]" id="' . $fieldId . '" value="' . (int)$taskInfo['languageId'] . '" min="-1" />
+            <small class="form-text text-muted">
+                Language ID to process (-1 = all languages, 0 = default, 1 = first language, etc.)<br>
+                Use this to limit processing to a specific language for better performance.
+            </small>
+        </div>';
+
+        $additionalFields[$fieldId] = [
+            'code' => $fieldCode,
+            'label' => 'Language ID (-1 for all languages)',
+            'cshKey' => '_MOD_system_txschedulerM1',
+            'cshLabel' => $fieldId
+        ];
+
         // Legacy support: minimumSimilarity (hidden, computed from qualityLevel)
         if (!isset($taskInfo['minimumSimilarity'])) {
             if ($task instanceof GenerateSimilaritiesTask) {
@@ -124,7 +149,7 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
                 $taskInfo['minimumSimilarity'] = max(0.05, (float)$taskInfo['qualityLevel'] - 0.1);
             }
         }
-        
+
         return $additionalFields;
     }
     
@@ -183,7 +208,19 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
         
         // Validation of recursiveExclusion: no specific validation needed
         // as it's a boolean handled by checkbox
-        
+
+        // Validation of languageId
+        if (isset($submittedData['languageId'])) {
+            $languageId = (int)$submittedData['languageId'];
+            if ($languageId < -1) {
+                $schedulerModule->addMessage(
+                    'The language ID must be -1 (all languages) or a non-negative integer.',
+                    FlashMessage::ERROR
+                );
+                $result = false;
+            }
+        }
+
         return $result;
     }
     
@@ -209,6 +246,9 @@ class GenerateSimilaritiesAdditionalFieldProvider extends AbstractAdditionalFiel
 
             // Handle checkbox: if not present in $_POST, it's unchecked
             $task->recursiveExclusion = isset($submittedData['recursiveExclusion']) && $submittedData['recursiveExclusion'] === '1';
+
+            // NEW: Language ID
+            $task->languageId = (int)$submittedData['languageId'];
         }
     }
     

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<xliff version="1.0">
+    <file source-language="en" target-language="fr" datatype="plaintext" original="messages" date="2025-09-30T12:00:00Z" product-name="semantic_suggestion">
+        <header/>
+        <body>
+            <!-- Nouvelles traductions pour la limitation par langue -->
+            <trans-unit id="scheduler.info.quality_level">
+                <target>Niveau de qualité</target>
+            </trans-unit>
+            <trans-unit id="scheduler.info.storage_threshold">
+                <target>Seuil de stockage</target>
+            </trans-unit>
+            <trans-unit id="scheduler.info.language">
+                <target>Langue</target>
+            </trans-unit>
+            <trans-unit id="scheduler.info.all_languages">
+                <target>Toutes les langues</target>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>

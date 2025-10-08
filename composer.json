@@ -1,6 +1,6 @@
 {
     "name": "talan-hdf/semantic-suggestion",
-    "version": "3.1.1",
+    "version": "3.2.0",
     "type": "typo3-cms-extension",
     "description": "TYPO3 extension for suggesting semantically related pages",
     "license": "GPL-2.0-or-later",

@@ -18,6 +18,7 @@ use TalanHdf\SemanticSuggestion\Service\LanguageService;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
 use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
+use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 
 class SemanticBackendController extends ActionController
 {
@@ -65,12 +66,28 @@ class SemanticBackendController extends ActionController
                 ConfigurationManagerInterface::CONFIGURATION_TYPE_FULL_TYPOSCRIPT
             );
             $extensionConfig = $fullTypoScript['plugin.']['tx_semanticsuggestion_suggestions.']['settings.'] ?? [];
-            
-            // Paramètres d'affichage frontend uniquement
-            $proximityThreshold = (float)($extensionConfig['proximityThreshold'] ?? 0.5);
-            $maxSuggestions = (int)($extensionConfig['maxSuggestions'] ?? 3);
-            $excludePages = GeneralUtility::intExplode(',', $extensionConfig['excludePages'] ?? '', true);
-            $excerptLength = (int)($extensionConfig['excerptLength'] ?? 100);
+
+            // Récupérer la configuration d'extension comme fallback
+            $extensionConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class)
+                ->get('semantic_suggestion');
+
+            // Paramètres d'affichage frontend : TypoScript > Config extension > Constante
+            $proximityThreshold = (float)(
+                $extensionConfig['qualityLevel'] ??
+                $extensionConfig['proximityThreshold'] ??
+                ($extensionConfiguration['settings']['qualityLevel'] ?? null) ??
+                ($extensionConfiguration['settings']['proximityThreshold'] ?? null) ??
+                \TalanHdf\SemanticSuggestion\Service\SuggestionService::DEFAULT_QUALITY_LEVEL
+            );
+            $maxSuggestions = (int)(
+                $extensionConfig['maxSuggestions'] ??
+                ($extensionConfiguration['settings']['maxSuggestions'] ?? 5)
+            );
+            $excludePages = GeneralUtility::intExplode(',', $extensionConfig['excludePages'] ?? ($extensionConfiguration['settings']['excludePages'] ?? ''), true);
+            $excerptLength = (int)(
+                $extensionConfig['excerptLength'] ??
+                ($extensionConfiguration['settings']['excerptLength'] ?? 100)
+            );
             
             // Paramètres de visibilité du module
             $showStatistics = (bool)($extensionConfig['showStatistics'] ?? true);
@@ -108,7 +125,7 @@ class SemanticBackendController extends ActionController
 
             // Récupérer les données d'analyse depuis la base
             $analysisData = $this->getAnalysisFromDatabase($rootPageId);
-            $statistics = $this->calculateStatistics($analysisData, $proximityThreshold);
+            $statistics = $this->calculateStatistics($analysisData, $proximityThreshold, $excludePages, $maxSuggestions);
 
             // Informations sur l'analyse sélectionnée
             $currentAnalysis = null;
@@ -123,7 +140,7 @@ class SemanticBackendController extends ActionController
             $executionTime = microtime(true) - $startTime;
             $performanceMetrics = [
                 'executionTime' => $executionTime,
-                'storedSimilarities' => $this->getStoredSimilaritiesCount($rootPageId),
+                'storedSimilarities' => $this->getStoredSimilaritiesCount($rootPageId, $proximityThreshold, $excludePages),
             ];
 
             // Récupérer les langues du site (pour les statistiques de langue)
@@ -280,7 +297,7 @@ class SemanticBackendController extends ActionController
     /**
      * Calcule les statistiques d'analyse
      */
-    protected function calculateStatistics(array $analysisData, float $proximityThreshold): array
+    protected function calculateStatistics(array $analysisData, float $proximityThreshold, array $excludePages = [], int $maxSuggestions = 3): array
     {
         $results = $analysisData['results'] ?? [];
         $allPairs = [];
@@ -290,12 +307,21 @@ class SemanticBackendController extends ActionController
             $similarities = $pageData['similarities'] ?? [];
             $pagesSimilarityCount[$pageId] = 0;
 
+            // Trier les similarités par score décroissant pour appliquer maxSuggestions
+            arsort($similarities);
+
+            $suggestionCount = 0;
             foreach ($similarities as $similarPageId => $similarityData) {
                 $score = $similarityData['score'];
-                
-                if ($score >= $proximityThreshold) {
+
+                // Appliquer les filtres frontend
+                if ($score >= $proximityThreshold &&
+                    !in_array($similarPageId, $excludePages) &&
+                    $suggestionCount < $maxSuggestions) {
+
                     $pagesSimilarityCount[$pageId]++;
-                    
+                    $suggestionCount++;
+
                     // Éviter les doublons dans les paires
                     $pairKey = min($pageId, $similarPageId) . '-' . max($pageId, $similarPageId);
                     if (!isset($allPairs[$pairKey])) {
@@ -326,20 +352,28 @@ class SemanticBackendController extends ActionController
     }
 
     /**
-     * Compte le nombre de similarités stockées pour une analyse
+     * Compte le nombre de similarités stockées pour une analyse (filtrées selon les paramètres frontend)
      */
-    protected function getStoredSimilaritiesCount(int $rootPageId): int
+    protected function getStoredSimilaritiesCount(int $rootPageId, float $proximityThreshold, array $excludePages = []): int
     {
         $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
-        
-        return (int)$queryBuilder
+
+        $query = $queryBuilder
             ->count('*')
             ->from('tx_semanticsuggestion_similarities')
             ->where(
-                $queryBuilder->expr()->eq('root_page_id', $queryBuilder->createNamedParameter($rootPageId, ParameterType::INTEGER))
-            )
-            ->executeQuery()
-            ->fetchOne();
+                $queryBuilder->expr()->eq('root_page_id', $queryBuilder->createNamedParameter($rootPageId, ParameterType::INTEGER)),
+                $queryBuilder->expr()->gte('similarity_score', $queryBuilder->createNamedParameter($proximityThreshold, ParameterType::STRING))
+            );
+
+        // Appliquer le filtre d'exclusion des pages si nécessaire
+        if (!empty($excludePages)) {
+            $query->andWhere(
+                $queryBuilder->expr()->notIn('similar_page_id', $excludePages)
+            );
+        }
+
+        return (int)$query->executeQuery()->fetchOne();
     }
 
     /**

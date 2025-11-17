@@ -33,6 +33,14 @@ class UtilityService
         }
     }
 
+    public function logError(string $message, array $context = []): void
+    {
+        // Errors should always be logged, regardless of debugMode
+        if ($this->logger instanceof LoggerInterface) {
+            $this->logger->error($message, $context);
+        }
+    }
+
     public function getDebugLogs(): array
     {
         return $this->debugLogs;

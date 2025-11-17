@@ -40,15 +40,15 @@ class SuggestionsController extends ActionController implements LoggerAwareInter
     // Keep listAction() and other business methods
     public function listAction(int $currentPage = 1, int $itemsPerPage = self::DEFAULT_ITEMS_PER_PAGE): ResponseInterface
     {
-        // Log via the injected logger (ensure injection works via Services.yaml and setLogger)
-        $this->logger->debug('listAction called', ['currentPage' => $currentPage, 'itemsPerPage' => $itemsPerPage]);
+        // Log via the utility service to respect TypoScript configuration
+        $this->utility->logDebug('listAction called', ['currentPage' => $currentPage, 'itemsPerPage' => $itemsPerPage]);
 
         // Using $GLOBALS['TSFE'] directly may be less reliable in v12/v13,
         // consider retrieving page ID via $this->request if possible,
         // but for now keep $GLOBALS['TSFE']->id
         $currentPageId = (int)($GLOBALS['TSFE']->id ?? 0);
         if ($currentPageId === 0) {
-             $this->logger->error('Could not determine current page ID in listAction');
+             $this->utility->logError('Could not determine current page ID in listAction');
               // Handle error, perhaps return an empty response or message
              return $this->htmlResponse('Error: Could not determine current page ID.');
         }

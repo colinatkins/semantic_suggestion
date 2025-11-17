@@ -46,10 +46,10 @@
                             </h3>
                         </div>
                         <div class="card-body">
-                            <form action="{f:uri.action(controller: 'SemanticBackend', action: 'index')}" method="get" class="row g-3">
+                            <form action="{f:uri.action(controller: 'SemanticBackend', action: 'index')}" method="get" class="row g-3" id="analysisForm">
                                 <div class="col-md-10">
                                     <label for="rootPageId" class="form-label"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.available" /></label>
-                                    <select name="rootPageId" id="rootPageId" class="form-select" onchange="this.form.submit()">
+                                    <select name="rootPageId" id="rootPageId" class="form-select">
                                         <f:for each="{availableAnalyses}" as="analysis">
                                             <option value="{analysis.root_page_id}" {f:if(condition: '{analysis.root_page_id} == {currentRootPageId}', then: 'selected')}>
                                                 {analysis.title} | {analysis.page_count} <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.pages_analyzed" /> | {analysis.pair_count} <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.stored_pairs" /> | Start Page ID: {analysis.root_page_id}
@@ -543,4 +543,20 @@
     </div>
 </f:section>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectElement = document.getElementById('rootPageId');
+    if (selectElement) {
+        selectElement.addEventListener('change', function() {
+            const selectedValue = this.value;
+            const currentUrl = new URL(window.location.href);
+            // Set the Extbase namespaced parameter
+            currentUrl.searchParams.set('tx_semanticsuggestion_web_semanticsuggestion[rootPageId]', selectedValue);
+            currentUrl.searchParams.set('tx_semanticsuggestion_web_semanticsuggestion[action]', 'index');
+            currentUrl.searchParams.set('tx_semanticsuggestion_web_semanticsuggestion[controller]', 'SemanticBackend');
+            window.location.href = currentUrl.toString();
+        });
+    }
+});
+</script>
 </html>

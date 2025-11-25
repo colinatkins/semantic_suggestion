@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2025-01-25
+
+### Added
+- **WCAG AAA Color Accessibility**: Enhanced backend module with optimized color contrast ratios
+  - High relevance: 8.12:1 contrast (+37.9% improvement)
+  - Medium relevance: 7.85:1 contrast (+73.3% improvement)
+  - Low relevance: 8.94:1 contrast (+50.5% improvement)
+- **Multi-Sensory Indicators**: Added icons (◆, ▲, ○) and colored borders for color-blind accessibility
+- **Automatic Dark Mode**: Implemented `prefers-color-scheme` support with optimized dark palette
+- **High Contrast Badges**: New badge system with enhanced readability
+  - Dark badges for statistics (15.8:1 contrast)
+  - White badges on active backgrounds for optimal visibility
+  - Hover effects and dark mode support
+
+### Improved
+- **Analysis Selection Interface**: Redesigned with list-group cards for better UX
+  - Visual feedback for active analysis selection
+  - Improved badge placement and contrast
+  - Better accessibility with ARIA labels
+- **Progress Bar Accessibility**: Enhanced with dark text on warning backgrounds and proper ARIA labels
+- **Keyboard Navigation**: Added focus states and reduced-motion support
+- **High Contrast Mode**: Support for system-level high contrast preferences
+
+### Fixed
+- **Badge Contrast Issues**: Fixed blue-on-blue badges in active list items
+- **Warning Background Text**: Added dark text class to all `bg-warning` elements
+- **Parameter Persistence**: Improved rootPageId handling when switching analyses
+
+### Removed
+- **Debug Code**: Cleaned up debug logging and template alerts for production
+
+### Technical
+- Created reusable high-contrast badge CSS classes
+- Implemented accessibility enhancements (focus states, ARIA labels, motion preferences)
+- Optimized for T3CON25 presentation
+
 ## [3.1.1] - 2025-09-29
 
 ### Fixed

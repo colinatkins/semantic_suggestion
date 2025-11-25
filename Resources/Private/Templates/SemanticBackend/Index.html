@@ -37,14 +37,6 @@
                     </div>
                 </f:if>
 
-                <!-- DEBUG: Template version 2024-11-24-v3 -->
-                <div class="alert alert-warning text-dark mb-3" role="status" aria-live="polite">
-                    <strong>DEBUG:</strong> currentRootPageId = <code>{currentRootPageId}</code> |
-                    Analyses count = <code><f:count subject="{availableAnalyses}" /></code> |
-                    Current Analysis Title = <code>{currentAnalysis.title}</code>
-                    <br><small>Controller debug: <code>{debugInfo}</code></small>
-                </div>
-
                 <f:if condition="{availableAnalyses}">
                     <div class="card mb-4">
                         <div class="card-header">
@@ -72,8 +64,8 @@
                                                 <small>Start Page ID: {analysis.root_page_id}</small>
                                             </div>
                                             <div class="text-end">
-                                                <span class="badge bg-primary">{analysis.page_count} <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.pages_analyzed" /></span>
-                                                <span class="badge bg-secondary">{analysis.pair_count} <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.stored_pairs" /></span>
+                                                <span class="badge badge-on-active badge-high-contrast-dark">{analysis.page_count} <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.pages_analyzed" /></span>
+                                                <span class="badge badge-on-active badge-high-contrast-secondary">{analysis.pair_count} <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.stored_pairs" /></span>
                                             </div>
                                         </div>
                                     </f:link.action>
@@ -241,7 +233,7 @@
                                                     <small class="text-muted">({langStat.info.twoLetterIsoCode})</small>
                                                 </td>
                                                 <td class="text-center">
-                                                    <span class="badge bg-primary">{langStat.count}</span>
+                                                    <span class="badge badge-high-contrast-dark">{langStat.count}</span>
                                                 </td>
                                                 <td class="text-center">
                                                     <f:if condition="{totalLangPages} > 0">
@@ -356,7 +348,7 @@
                                                     <br><small class="text-muted">ID: {pageId}</small>
                                                 </td>
                                                 <td class="text-center">
-                                                    <span class="badge bg-primary fs-6">{count}</span>
+                                                    <span class="badge badge-high-contrast-dark fs-6">{count}</span>
                                                 </td>
                                             </tr>
                                         </f:for>

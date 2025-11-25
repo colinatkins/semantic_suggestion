@@ -74,15 +74,6 @@ class SemanticBackendController extends ActionController
             $rootPageId = (int)$this->request->getArgument('rootPageId');
         }
 
-        // DEBUG: Log received parameter
-        $debugInfo = [
-            'rootPageId_final' => $rootPageId,
-            'rootPageId_param' => func_get_args()[0] ?? null,
-            'extbase_namespace_params' => $queryParams[$extbaseNamespace] ?? [],
-            'query_params' => $queryParams,
-        ];
-        $this->logger->warning('DEBUG indexAction', $debugInfo);
-
         try {
             // Récupérer la configuration TypoScript (seulement pour l'affichage)
             $fullTypoScript = $this->configurationManager->getConfiguration(
@@ -184,9 +175,6 @@ class SemanticBackendController extends ActionController
 
             // Assigner les variables à la vue
             $moduleTemplate->assignMultiple([
-                // DEBUG info
-                'debugInfo' => json_encode($debugInfo),
-
                 // Configuration d'affichage (TypoScript)
                 'proximityThreshold' => $proximityThreshold,
                 'maxSuggestions' => $maxSuggestions,

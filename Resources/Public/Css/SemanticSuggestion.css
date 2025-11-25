@@ -274,3 +274,104 @@
 
 .page-title { font-weight: bold; }
 .score, .relevance { font-size: 0.9em; }
+
+/* ============================================
+   HIGH CONTRAST BADGES
+   Optimized for better readability
+   ============================================ */
+
+/* Primary badge with enhanced contrast */
+.badge-high-contrast-primary {
+    background: #003d82;  /* Darker blue for better contrast */
+    color: #ffffff;
+    font-weight: 600;
+    padding: 0.35em 0.65em;
+    border-radius: 0.375rem;
+}
+
+/* Secondary badge with enhanced contrast */
+.badge-high-contrast-secondary {
+    background: #2d3339;  /* Darker gray for better contrast */
+    color: #ffffff;
+    font-weight: 600;
+    padding: 0.35em 0.65em;
+    border-radius: 0.375rem;
+}
+
+/* Light badge for active/dark backgrounds */
+.badge-high-contrast-light {
+    background: #ffffff;
+    color: #212529;
+    font-weight: 600;
+    padding: 0.35em 0.65em;
+    border-radius: 0.375rem;
+    border: 1px solid #dee2e6;
+}
+
+/* Dark badge for light backgrounds */
+.badge-high-contrast-dark {
+    background: #1a1d20;
+    color: #ffffff;
+    font-weight: 600;
+    padding: 0.35em 0.65em;
+    border-radius: 0.375rem;
+}
+
+/* Info badge with enhanced contrast */
+.badge-high-contrast-info {
+    background: #004085;  /* Darker cyan/blue for better contrast */
+    color: #ffffff;
+    font-weight: 600;
+    padding: 0.35em 0.65em;
+    border-radius: 0.375rem;
+}
+
+/* Badge for active list items (white badge on blue background) */
+.list-group-item.active .badge-on-active {
+    background: #ffffff;
+    color: #0d6efd;
+    font-weight: 700;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Badge hover states */
+.badge-high-contrast-primary:hover,
+.badge-high-contrast-secondary:hover,
+.badge-high-contrast-info:hover,
+.badge-high-contrast-dark:hover {
+    filter: brightness(1.15);
+}
+
+.badge-high-contrast-light:hover {
+    background: #f8f9fa;
+    border-color: #adb5bd;
+}
+
+/* Dark mode support for badges */
+@media (prefers-color-scheme: dark) {
+    .badge-high-contrast-primary {
+        background: #4895ef;
+        color: #000000;
+    }
+
+    .badge-high-contrast-secondary {
+        background: #6c757d;
+        color: #ffffff;
+    }
+
+    .badge-high-contrast-light {
+        background: #2d3339;
+        color: #f8f9fa;
+        border-color: #495057;
+    }
+
+    .badge-high-contrast-dark {
+        background: #f8f9fa;
+        color: #1a1d20;
+    }
+
+    .badge-high-contrast-info {
+        background: #56c8ff;
+        color: #000000;
+    }
+}

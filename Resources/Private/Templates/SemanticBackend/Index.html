@@ -37,6 +37,14 @@
                     </div>
                 </f:if>
 
+                <!-- DEBUG: Template version 2024-11-24-v3 -->
+                <div class="alert alert-warning text-dark mb-3" role="status" aria-live="polite">
+                    <strong>DEBUG:</strong> currentRootPageId = <code>{currentRootPageId}</code> |
+                    Analyses count = <code><f:count subject="{availableAnalyses}" /></code> |
+                    Current Analysis Title = <code>{currentAnalysis.title}</code>
+                    <br><small>Controller debug: <code>{debugInfo}</code></small>
+                </div>
+
                 <f:if condition="{availableAnalyses}">
                     <div class="card mb-4">
                         <div class="card-header">
@@ -46,25 +54,32 @@
                             </h3>
                         </div>
                         <div class="card-body">
-                            <form action="{f:uri.action(controller: 'SemanticBackend', action: 'index')}" method="get" class="row g-3" id="analysisForm">
-                                <div class="col-md-10">
-                                    <label for="rootPageId" class="form-label"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.available" /></label>
-                                    <select name="rootPageId" id="rootPageId" class="form-select">
-                                        <f:for each="{availableAnalyses}" as="analysis">
-                                            <option value="{analysis.root_page_id}" {f:if(condition: '{analysis.root_page_id} == {currentRootPageId}', then: 'selected')}>
-                                                {analysis.title} | {analysis.page_count} <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.pages_analyzed" /> | {analysis.pair_count} <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.stored_pairs" /> | Start Page ID: {analysis.root_page_id}
-                                            </option>
-                                        </f:for>
-                                    </select>
-                                    <div class="form-text"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.help" /></div>
-                                </div>
-                                <div class="col-md-2 d-flex align-items-end">
-                                <f:link.action action="index" class="btn btn-primary">
-                                    <core:icon identifier="actions-refresh" />
-                                    <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.refresh" />
-                                </f:link.action>
-                                </div>
-                            </form>
+                            <p class="mb-3"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.available" /></p>
+                            <div class="list-group">
+                                <f:for each="{availableAnalyses}" as="analysis">
+                                    <f:link.action
+                                        action="index"
+                                        controller="SemanticBackend"
+                                        arguments="{rootPageId: analysis.root_page_id}"
+                                        class="list-group-item list-group-item-action {f:if(condition: '{analysis.root_page_id} == {currentRootPageId}', then: 'active')}"
+                                    >
+                                        <div class="d-flex w-100 justify-content-between align-items-center">
+                                            <div>
+                                                <h5 class="mb-1">
+                                                    <core:icon identifier="apps-pagetree-root" size="small" />
+                                                    {analysis.title}
+                                                </h5>
+                                                <small>Start Page ID: {analysis.root_page_id}</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-primary">{analysis.page_count} <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.pages_analyzed" /></span>
+                                                <span class="badge bg-secondary">{analysis.pair_count} <f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.stored_pairs" /></span>
+                                            </div>
+                                        </div>
+                                    </f:link.action>
+                                </f:for>
+                            </div>
+                            <div class="form-text mt-2"><f:translate key="LLL:EXT:semantic_suggestion/Resources/Private/Language/locallang_be.xlf:backend.analysis.help" /></div>
                         </div>
                     </div>
                 </f:if>
@@ -233,10 +248,11 @@
                                                         <f:then>
                                                             <f:variable name="percentage" value="{(langStat.count / totalLangPages * 100)}" />
                                                             <div class="progress" style="height: 20px;">
-                                                                <div class="progress-bar" role="progressbar" 
-                                                                     style="width: {percentage -> f:format.number(decimals: 1)}%" 
-                                                                     aria-valuenow="{percentage -> f:format.number(decimals: 1)}" 
-                                                                     aria-valuemin="0" aria-valuemax="100">
+                                                                <div class="progress-bar" role="progressbar"
+                                                                     style="width: {percentage -> f:format.number(decimals: 1)}%"
+                                                                     aria-valuenow="{percentage -> f:format.number(decimals: 1)}"
+                                                                     aria-valuemin="0" aria-valuemax="100"
+                                                                     aria-label="Language distribution: {percentage -> f:format.number(decimals: 1)}%">
                                                                     {percentage -> f:format.number(decimals: 1)}%
                                                                 </div>
                                                             </div>
@@ -293,11 +309,12 @@
                                                         <f:variable name="scorePercentage" value="{pair.score * 100}" />
                                                         <div class="d-flex flex-column align-items-center">
                                                             <div class="progress mb-2" style="height: 20px; width: 100%;">
-                                                                <div class="progress-bar {f:if(condition: '{pair.score} >= 0.8', then: 'bg-success', else: f:if(condition: '{pair.score} >= 0.6', then: 'bg-warning', else: 'bg-info'))}" 
-                                                                     role="progressbar" 
-                                                                     style="width: {scorePercentage -> f:format.number(decimals: 1)}%" 
-                                                                     aria-valuenow="{scorePercentage -> f:format.number(decimals: 1)}" 
-                                                                     aria-valuemin="0" aria-valuemax="100">
+                                                                <div class="progress-bar {f:if(condition: '{pair.score} >= 0.8', then: 'bg-success', else: f:if(condition: '{pair.score} >= 0.6', then: 'bg-warning text-dark', else: 'bg-info'))}"
+                                                                     role="progressbar"
+                                                                     style="width: {scorePercentage -> f:format.number(decimals: 1)}%"
+                                                                     aria-valuenow="{scorePercentage -> f:format.number(decimals: 1)}"
+                                                                     aria-valuemin="0" aria-valuemax="100"
+                                                                     aria-label="Similarity score: {scorePercentage -> f:format.number(decimals: 1)}%">
                                                                     {scorePercentage -> f:format.number(decimals: 1)}%
                                                                 </div>
                                                             </div>
@@ -414,7 +431,7 @@
                              </div>
                              <div class="col-md-6">
                                  <div class="card border-warning mb-3 h-100">
-                                     <div class="card-header bg-warning">
+                                     <div class="card-header bg-warning text-dark">
                                          <h6 class="mb-0"><core:icon identifier="actions-eye" /> Display (TypoScript)</h6>
                                      </div>
                                      <div class="card-body">
@@ -448,7 +465,7 @@
                                  <hr>
                                  <div class="row text-center mb-2">
                                      <div class="col-12">
-                                         <span class="badge bg-success">Scheduler = 0.3</span> → Saves from 0.3 and up
+                                         <span class="badge bg-success">Scheduler = 0.3</span> <span aria-hidden="true">→</span> Saves from 0.3 and up
                                      </div>
                                  </div>
                                  <div class="row text-center">
@@ -462,7 +479,7 @@
                                  <hr>
                                   <div class="row text-center mb-2">
                                       <div class="col-12">
-                                          <span class="badge bg-warning">TypoScript = 0.4</span> → Shows from 0.4 and up
+                                          <span class="badge bg-warning text-dark">TypoScript = 0.4</span> <span aria-hidden="true">→</span> Shows from 0.4 and up
                                       </div>
                                   </div>
                                   <div class="row text-center">
@@ -543,20 +560,4 @@
     </div>
 </f:section>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const selectElement = document.getElementById('rootPageId');
-    if (selectElement) {
-        selectElement.addEventListener('change', function() {
-            const selectedValue = this.value;
-            const currentUrl = new URL(window.location.href);
-            // Set the Extbase namespaced parameter
-            currentUrl.searchParams.set('tx_semanticsuggestion_web_semanticsuggestion[rootPageId]', selectedValue);
-            currentUrl.searchParams.set('tx_semanticsuggestion_web_semanticsuggestion[action]', 'index');
-            currentUrl.searchParams.set('tx_semanticsuggestion_web_semanticsuggestion[controller]', 'SemanticBackend');
-            window.location.href = currentUrl.toString();
-        });
-    }
-});
-</script>
 </html>

@@ -1,7 +1,9 @@
 <html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers" data-namespace-typo3-fluid="true">
-<div class="panel panel-default">
-    <div class="panel-heading">NLP Statistics</div>
-    <div class="panel-body">
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">NLP Statistics</h5>
+    </div>
+    <div class="card-body">
         <div class="row">
             <div class="col-md-6">
                 <h4>General Statistics</h4>
@@ -12,53 +14,79 @@
             </div>
             <div class="col-md-6">
                 <h4>Sentiment Distribution</h4>
-                <div class="progress">
-                    <div class="progress-bar progress-bar-success" style="width: {f:math.divide(a: nlpStatistics.sentimentDistribution.positive, b: nlpStatistics.totalPages, decimals: 2) * 100}%">
-                        Positive ({nlpStatistics.sentimentDistribution.positive})
-                    </div>
-                    <div class="progress-bar progress-bar-warning" style="width: {f:math.divide(a: nlpStatistics.sentimentDistribution.neutral, b: nlpStatistics.totalPages, decimals: 2) * 100}%">
-                        Neutral ({nlpStatistics.sentimentDistribution.neutral})
-                    </div>
-                    <div class="progress-bar progress-bar-danger" style="width: {f:math.divide(a: nlpStatistics.sentimentDistribution.negative, b: nlpStatistics.totalPages, decimals: 2) * 100}%">
-                        Negative ({nlpStatistics.sentimentDistribution.negative})
-                    </div>
-                </div>
+                <f:if condition="{nlpStatistics.totalPages}">
+                    <f:then>
+                        <f:variable name="positivePercent" value="{f:format.number(number: '{nlpStatistics.sentimentDistribution.positive}' / '{nlpStatistics.totalPages}' * 100, decimals: 1)}" />
+                        <f:variable name="neutralPercent" value="{f:format.number(number: '{nlpStatistics.sentimentDistribution.neutral}' / '{nlpStatistics.totalPages}' * 100, decimals: 1)}" />
+                        <f:variable name="negativePercent" value="{f:format.number(number: '{nlpStatistics.sentimentDistribution.negative}' / '{nlpStatistics.totalPages}' * 100, decimals: 1)}" />
+                        <div class="progress" role="progressbar" style="height: 25px;">
+                            <div class="progress-bar bg-success" style="width: {positivePercent}%">
+                                Positive ({nlpStatistics.sentimentDistribution.positive})
+                            </div>
+                            <div class="progress-bar bg-warning" style="width: {neutralPercent}%">
+                                Neutral ({nlpStatistics.sentimentDistribution.neutral})
+                            </div>
+                            <div class="progress-bar bg-danger" style="width: {negativePercent}%">
+                                Negative ({nlpStatistics.sentimentDistribution.negative})
+                            </div>
+                        </div>
+                    </f:then>
+                    <f:else>
+                        <p class="text-muted">No data available</p>
+                    </f:else>
+                </f:if>
             </div>
         </div>
-        
-        <div class="row">
+
+        <div class="row mt-4">
             <div class="col-md-6">
                 <h4>Top 10 Words</h4>
-                <ul>
+                <ul class="list-group">
                     <f:for each="{nlpStatistics.topWords}" as="count" key="word">
-                        <li>{word}: {count}</li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {word}
+                            <span class="badge bg-primary rounded-pill">{count}</span>
+                        </li>
                     </f:for>
                 </ul>
             </div>
             <div class="col-md-6">
                 <h4>Top 10 Named Entities</h4>
-                <ul>
+                <ul class="list-group">
                     <f:for each="{nlpStatistics.topEntities}" as="count" key="entity">
-                        <li>{entity}: {count}</li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {entity}
+                            <span class="badge bg-secondary rounded-pill">{count}</span>
+                        </li>
                     </f:for>
                 </ul>
             </div>
         </div>
-        
-        <div class="row">
+
+        <div class="row mt-4">
             <div class="col-md-12">
                 <h4>Text Complexity Distribution</h4>
-                <div class="progress">
-                    <div class="progress-bar progress-bar-success" style="width: {f:math.divide(a: nlpStatistics.complexityDistribution.simple, b: nlpStatistics.totalPages, decimals: 2) * 100}%">
-                        Simple ({nlpStatistics.complexityDistribution.simple})
-                    </div>
-                    <div class="progress-bar progress-bar-warning" style="width: {f:math.divide(a: nlpStatistics.complexityDistribution.medium, b: nlpStatistics.totalPages, decimals: 2) * 100}%">
-                        Medium ({nlpStatistics.complexityDistribution.medium})
-                    </div>
-                    <div class="progress-bar progress-bar-danger" style="width: {f:math.divide(a: nlpStatistics.complexityDistribution.complex, b: nlpStatistics.totalPages, decimals: 2) * 100}%">
-                        Complex ({nlpStatistics.complexityDistribution.complex})
-                    </div>
-                </div>
+                <f:if condition="{nlpStatistics.totalPages}">
+                    <f:then>
+                        <f:variable name="simplePercent" value="{f:format.number(number: '{nlpStatistics.complexityDistribution.simple}' / '{nlpStatistics.totalPages}' * 100, decimals: 1)}" />
+                        <f:variable name="mediumPercent" value="{f:format.number(number: '{nlpStatistics.complexityDistribution.medium}' / '{nlpStatistics.totalPages}' * 100, decimals: 1)}" />
+                        <f:variable name="complexPercent" value="{f:format.number(number: '{nlpStatistics.complexityDistribution.complex}' / '{nlpStatistics.totalPages}' * 100, decimals: 1)}" />
+                        <div class="progress" role="progressbar" style="height: 25px;">
+                            <div class="progress-bar bg-success" style="width: {simplePercent}%">
+                                Simple ({nlpStatistics.complexityDistribution.simple})
+                            </div>
+                            <div class="progress-bar bg-warning" style="width: {mediumPercent}%">
+                                Medium ({nlpStatistics.complexityDistribution.medium})
+                            </div>
+                            <div class="progress-bar bg-danger" style="width: {complexPercent}%">
+                                Complex ({nlpStatistics.complexityDistribution.complex})
+                            </div>
+                        </div>
+                    </f:then>
+                    <f:else>
+                        <p class="text-muted">No data available</p>
+                    </f:else>
+                </f:if>
             </div>
         </div>
     </div>

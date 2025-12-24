@@ -2,6 +2,7 @@
 
 [![TYPO3 12](https://img.shields.io/badge/TYPO3-12-orange.svg)](https://get.typo3.org/version/12)
 [![TYPO3 13](https://img.shields.io/badge/TYPO3-13-orange.svg)](https://get.typo3.org/version/13)
+[![TYPO3 14](https://img.shields.io/badge/TYPO3-14-orange.svg)](https://get.typo3.org/version/14)
 [![Latest Stable Version](https://img.shields.io/packagist/v/talan-hdf/semantic-suggestion.svg)](https://packagist.org/packages/talan-hdf/semantic-suggestion)
 [![License](https://img.shields.io/packagist/l/talan-hdf/semantic-suggestion.svg)](https://packagist.org/packages/talan-hdf/semantic-suggestion)
 
@@ -107,10 +108,10 @@ Since version 2.0.0, similarity scores are **stored in a dedicated database tabl
 
 ## Requirements
 
--   **TYPO3**: 12.0.0 - 13.9.99
--   **PHP**: 8.0 or higher
--   **Dependencies**: 
-    - `cywolf/nlp-tools` (automatically installed via Composer)
+-   **TYPO3**: 12.4.0 - 14.99.99
+-   **PHP**: 8.1 or higher
+-   **Dependencies**:
+    - `cywolf/nlp-tools` ^2.0 (automatically installed via Composer)
     - `wamania/php-stemmer` (for advanced stemming support)
 
 ## Installation

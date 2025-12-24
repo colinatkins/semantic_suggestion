@@ -1,5 +1,6 @@
 <html
         xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+        xmlns:core="http://typo3.org/ns/TYPO3/CMS/Core/ViewHelpers"
         data-namespace-typo3-fluid="true"
 >
 
@@ -11,9 +12,7 @@
             <f:format.raw>{formTag}</f:format.raw>
         </f:then>
     </f:if>
-    <f:if condition="{docHeader.enabled}">
-        <f:render partial="DocHeader" arguments="{docHeader:docHeader}" />
-    </f:if>
+    <f:comment><!-- DocHeader partial removed - using default TYPO3 backend module header --></f:comment>
     <div class="module-body t3js-module-body">
         <f:if condition="{uiBlock}">
             <div id="t3js-ui-block" class="ui-block">

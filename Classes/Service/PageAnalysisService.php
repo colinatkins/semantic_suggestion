@@ -36,9 +36,9 @@ class PageAnalysisService implements LoggerAwareInterface
     protected ?QueryBuilder $queryBuilder = null;
     protected SiteFinder $siteFinder;
     protected FrontendInterface $cache;
-    protected $languageDetector;
-    protected $textAnalyzer;
-    protected $textVectorizer;
+    protected ?LanguageDetectionService $languageDetector = null;
+    protected ?TextAnalysisService $textAnalyzer = null;
+    protected ?TextVectorizerService $textVectorizer = null;
     protected ?SiteLanguageService $siteLanguageService;
 
     public function __construct(
@@ -750,7 +750,7 @@ private function getAllSubpages(int $parentId, int $depth = 0): array
             $languageId = $languageAspect->getId();
 
             $fieldsToSelect = ['uid', 'title', 'description', 'keywords', 'abstract', 'crdate', 'sys_language_uid'];
-            $tableColumns = $queryBuilder->getConnection()->getSchemaManager()->listTableColumns('pages');
+            $tableColumns = $queryBuilder->getConnection()->createSchemaManager()->listTableColumns('pages');
             $existingColumns = array_keys($tableColumns);
             $fieldsToSelect = array_intersect($fieldsToSelect, $existingColumns);
 

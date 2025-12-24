@@ -36,9 +36,13 @@ use TYPO3\CMS\Core\Log\Writer\FileWriter;
         );
     }
 
-    // TCA hooks registration (unconditional)
-    $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['processDatamapClass'][] = \TalanHdf\SemanticSuggestion\Hooks\DataHandlerHook::class;
-    $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['processCmdmapClass'][] = \TalanHdf\SemanticSuggestion\Hooks\DataHandlerHook::class;
+    // DataHandler cache clearing - TYPO3 14 uses PSR-14 events via Services.php
+    // Legacy SC_OPTIONS hooks kept for TYPO3 12/13 backward compatibility
+    if ($versionInformation->getMajorVersion() < 14) {
+        $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['processDatamapClass'][] = \TalanHdf\SemanticSuggestion\Hooks\DataHandlerHook::class;
+        $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['processCmdmapClass'][] = \TalanHdf\SemanticSuggestion\Hooks\DataHandlerHook::class;
+    }
+    // For TYPO3 14+, the EventListener is registered via PHP attributes in Classes/EventListener/DataHandlerEventListener.php
 
     // TypoScript setup and constants import (unconditional)
     \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addTypoScriptSetup('@import "EXT:semantic_suggestion/Configuration/TypoScript/setup.typoscript"');

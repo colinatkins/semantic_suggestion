@@ -1,18 +1,20 @@
 <?php
+
+declare(strict_types=1);
+
 namespace TalanHdf\SemanticSuggestion\Controller;
 
-// --- Imports ---
 use Psr\Http\Message\ResponseInterface;
-use TalanHdf\SemanticSuggestion\Service\SuggestionService;
-use TalanHdf\SemanticSuggestion\Service\UtilityService;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TalanHdf\SemanticSuggestion\Service\PageAnalysisService; // Ensure this is used or remove
-use TYPO3\CMS\Core\Log\LogManager;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
-use Psr\Log\LoggerInterface;
-use TYPO3\CMS\Extbase\Mvc\Controller\ActionController; // Import ActionController
+use TalanHdf\SemanticSuggestion\Service\PageAnalysisService;
+use TalanHdf\SemanticSuggestion\Service\SuggestionService;
+use TalanHdf\SemanticSuggestion\Service\UtilityService;
+use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
 
+/**
+ * Frontend controller for displaying semantic suggestions
+ */
 class SuggestionsController extends ActionController implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
@@ -37,20 +39,18 @@ class SuggestionsController extends ActionController implements LoggerAwareInter
         // $this->setLogger(...) // Is called automatically if configured in Services.yaml
     }
 
-    // Keep listAction() and other business methods
+    /**
+     * Display list of semantic suggestions for the current page
+     */
     public function listAction(int $currentPage = 1, int $itemsPerPage = self::DEFAULT_ITEMS_PER_PAGE): ResponseInterface
     {
-        // Log via the utility service to respect TypoScript configuration
         $this->utility->logDebug('listAction called', ['currentPage' => $currentPage, 'itemsPerPage' => $itemsPerPage]);
 
-        // Using $GLOBALS['TSFE'] directly may be less reliable in v12/v13,
-        // consider retrieving page ID via $this->request if possible,
-        // but for now keep $GLOBALS['TSFE']->id
-        $currentPageId = (int)($GLOBALS['TSFE']->id ?? 0);
+        // TYPO3 14 compatible: Get page ID from request routing attribute
+        $currentPageId = $this->getCurrentPageId();
         if ($currentPageId === 0) {
-             $this->utility->logError('Could not determine current page ID in listAction');
-              // Handle error, perhaps return an empty response or message
-             return $this->htmlResponse('Error: Could not determine current page ID.');
+            $this->utility->logError('Could not determine current page ID in listAction');
+            return $this->htmlResponse('Error: Could not determine current page ID.');
         }
 
         $currentLanguageUid = $this->utility->getCurrentLanguageUid(); // Ensure UtilityService works
@@ -77,5 +77,25 @@ class SuggestionsController extends ActionController implements LoggerAwareInter
 
         $this->view->assignMultiple($viewData);
         return $this->htmlResponse();
+    }
+
+    /**
+     * Get current page ID from request (TYPO3 14 compatible)
+     * Falls back to $GLOBALS['TSFE'] for backward compatibility
+     */
+    private function getCurrentPageId(): int
+    {
+        // TYPO3 13+/14: Use request routing attribute
+        $routing = $this->request->getAttribute('routing');
+        if ($routing !== null && method_exists($routing, 'getPageId')) {
+            return (int)$routing->getPageId();
+        }
+
+        // Fallback for older TYPO3 versions or edge cases
+        if (isset($GLOBALS['TSFE']) && isset($GLOBALS['TSFE']->id)) {
+            return (int)$GLOBALS['TSFE']->id;
+        }
+
+        return 0;
     }
 }

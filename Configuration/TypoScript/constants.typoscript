@@ -2,8 +2,19 @@
 # customsubcategory=100=Frontend Display Settings
 # customsubcategory=110=Backend Module Display Settings
 # customsubcategory=120=Analysis Algorithm Settings
+# customsubcategory=150=Template Integration
 
 plugin.tx_semanticsuggestion_suggestions {
+    # Template Integration Settings
+    settings {
+        # cat=semantic_suggestion:Template Integration/150/001; type=boolean; label=Override Bootstrap Package Templates
+        # Enable automatic integration with Bootstrap Package templates.
+        # When enabled, semantic suggestions will automatically appear after the main content.
+        # Set to 0 if you use custom templates or a different template package.
+        # In that case, add manually: <f:cObject typoscriptObjectPath="lib.semantic_suggestion" />
+        overrideBootstrapTemplates = 0
+    }
+
     # Unified Quality Settings
     settings {
          # cat=semantic_suggestion:Quality Control/100/001; type=float; label=Display Quality Level (0.1-1.0) - Filters suggestions shown to users

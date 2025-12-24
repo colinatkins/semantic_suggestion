@@ -73,6 +73,7 @@ Since version 2.0.0, similarity scores are **stored in a dedicated database tabl
     -   [NLP Configuration](#nlp-configuration)
     -   [Configuration Interaction](#configuration-interaction)
 -   [Usage (Frontend)](#usage-frontend)
+-   [Bootstrap Package Integration](#bootstrap-package-integration)
 -   [Backend Module](#backend-module)
 -   [Scheduler Task](#scheduler-task-1)
 -   [Similarity Logic (TF-IDF Enhanced)](#similarity-logic-tf-idf-enhanced)
@@ -879,6 +880,138 @@ lib.myContent {
 ```
 
 The plugin will read relevant suggestions for the current page from the database, applying filters defined in the TypoScript settings (`proximityThreshold`, `maxSuggestions`, `excludePages`).
+
+## Bootstrap Package Integration
+
+The extension provides **optional automatic integration** with Bootstrap Package templates. When enabled, semantic suggestions will appear automatically after the main content on all pages.
+
+### Quick Setup (Bootstrap Package Users)
+
+**Step 1**: Enable the integration in your TypoScript Constants:
+
+```typoscript
+plugin.tx_semanticsuggestion_suggestions.settings {
+    overrideBootstrapTemplates = 1
+}
+```
+
+Or via the **Constant Editor** in TYPO3 Backend:
+- Go to **Template** module
+- Select **Constant Editor**
+- Choose category **semantic_suggestion** → **Template Integration**
+- Enable **Override Bootstrap Package Templates**
+
+**Step 2**: Clear the TYPO3 cache:
+```bash
+./vendor/bin/typo3 cache:flush
+```
+
+That's it! Semantic suggestions will now appear on all Bootstrap Package page layouts.
+
+### Supported Page Layouts
+
+The following Bootstrap Package page layouts are supported:
+
+| Layout | Description |
+|--------|-------------|
+| `Default.html` | Standard single-column layout |
+| `Simple.html` | Minimal layout without footer |
+| `2Columns.html` | Two-column layout (75/25) |
+| `2Columns2575.html` | Two-column layout (25/75) |
+| `2Columns5050.html` | Two-column layout (50/50) |
+| `2ColumnsOffsetRight.html` | Two-column with right offset |
+| `3Columns.html` | Three-column layout |
+| `None.html` | Empty layout (content only) |
+| `SpecialFeature.html` | Feature page layout |
+| `SpecialStart.html` | Start/landing page layout |
+| `SubnavigationLeft.html` | Layout with left subnavigation |
+| `SubnavigationRight.html` | Layout with right subnavigation |
+| `SubnavigationLeft2Columns.html` | Left subnav with 2 columns |
+| `SubnavigationRight2Columns.html` | Right subnav with 2 columns |
+
+### Placement of Suggestions
+
+Suggestions are placed:
+- **After** the main content area (colPos 0)
+- **Before** the bottom content area (colPos 9)
+- Inside a `<div class="section section-semantic-suggestion">` wrapper
+
+### Manual Integration (Non-Bootstrap Package Users)
+
+If you use a **custom template package** or **Fluid Styled Content**, add the marker manually to your page template:
+
+```html
+<f:comment>Semantic Suggestion - Related content based on semantic similarity</f:comment>
+<div class="section section-semantic-suggestion">
+    <f:cObject typoscriptObjectPath="lib.semantic_suggestion" />
+</div>
+```
+
+**Example placement in a custom template:**
+
+```html
+<f:layout name="Default" />
+<f:section name="Main">
+    <!-- Your main content -->
+    <div class="content-main">
+        <f:cObject typoscriptObjectPath="lib.dynamicContent" data="{colPos: '0'}" />
+    </div>
+
+    <!-- Semantic suggestions after main content -->
+    <div class="section section-semantic-suggestion">
+        <f:cObject typoscriptObjectPath="lib.semantic_suggestion" />
+    </div>
+
+    <!-- Footer content -->
+    <div class="content-footer">
+        <f:cObject typoscriptObjectPath="lib.dynamicContent" data="{colPos: '9'}" />
+    </div>
+</f:section>
+```
+
+### Styling the Suggestions
+
+The suggestions are wrapped in a `section-semantic-suggestion` class. You can customize the styling:
+
+```css
+.section-semantic-suggestion {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+}
+
+.section-semantic-suggestion h3 {
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+}
+
+.section-semantic-suggestion .suggestion-item {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 0.25rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+```
+
+### Disabling for Specific Pages
+
+If you need to disable suggestions on specific pages while keeping the Bootstrap Package integration active:
+
+1. **Via TypoScript conditions:**
+```typoscript
+[page["uid"] == 42]
+    lib.semantic_suggestion >
+[END]
+```
+
+2. **Via page exclusions:**
+```typoscript
+plugin.tx_semanticsuggestion_suggestions.settings {
+    excludePages = 42,56,78
+}
+```
 
 ## Backend Module
 

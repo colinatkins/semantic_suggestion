@@ -134,3 +134,23 @@ module.tx_semanticsuggestion {
     _CSS_DEFAULT_STYLE >
     _CSS_DEFAULT_STYLE = <link rel="stylesheet" type="text/css" href="EXT:semantic_suggestion/Resources/Public/Css/SemanticSuggestion.css" media="all">
 }
+
+# ========================================
+# PAGE TEMPLATE OVERRIDE FOR BOOTSTRAP PACKAGE
+# ========================================
+# Override Bootstrap Package page templates to include semantic suggestions
+# This adds lib.semantic_suggestion to the page template after main content
+#
+# To enable, set in TypoScript Constants:
+#   plugin.tx_semanticsuggestion_suggestions.settings.overrideBootstrapTemplates = 1
+#
+# For custom templates, add manually in your Fluid template:
+#   <f:cObject typoscriptObjectPath="lib.semantic_suggestion" />
+#
+[{$plugin.tx_semanticsuggestion_suggestions.settings.overrideBootstrapTemplates} == 1]
+page.10 {
+    templateRootPaths {
+        100 = EXT:semantic_suggestion/Resources/Private/Templates/Page/
+    }
+}
+[END]

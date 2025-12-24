@@ -12,19 +12,18 @@
     <div class="section section-default">
         <div class="container">
             <div class="section-row">
-                <div class="section-column maincontent-wrap" >
+                <div class="section-column maincontent-wrap">
                     <f:cObject typoscriptObjectPath="lib.dynamicContent" data="{pageUid: '{data.uid}', colPos: '0', slide: '{theme.pagelayout.{pagelayout}.colPos.0.slide}'}" />
+                    <f:comment>Semantic Suggestion - Related content based on semantic similarity</f:comment>
+                    <div class="semantic-suggestion-wrap">
+                        <f:cObject typoscriptObjectPath="lib.semantic_suggestion" />
+                    </div>
                 </div>
                 <div class="section-column subcontent-wrap">
                     <f:cObject typoscriptObjectPath="lib.dynamicContent" data="{pageUid: '{data.uid}', colPos: '1', slide: '{theme.pagelayout.{pagelayout}.colPos.1.slide}'}" />
                 </div>
             </div>
         </div>
-    </div>
-
-    <f:comment>Semantic Suggestion - Related content based on semantic similarity</f:comment>
-    <div class="section section-semantic-suggestion">
-        <f:cObject typoscriptObjectPath="lib.semantic_suggestion" />
     </div>
 
     <f:cObject typoscriptObjectPath="lib.dynamicContent" data="{pageUid: '{data.uid}', colPos: '9', slide: '{theme.pagelayout.{pagelayout}.colPos.9.slide}'}" />

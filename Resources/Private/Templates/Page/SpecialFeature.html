@@ -69,7 +69,9 @@
 
     <f:comment>Semantic Suggestion - Related content based on semantic similarity</f:comment>
     <div class="section section-semantic-suggestion">
-        <f:cObject typoscriptObjectPath="lib.semantic_suggestion" />
+        <div class="container">
+            <f:cObject typoscriptObjectPath="lib.semantic_suggestion" />
+        </div>
     </div>
 
     <f:cObject typoscriptObjectPath="lib.dynamicContent" data="{pageUid: '{data.uid}', colPos: '9', slide: '{theme.pagelayout.{pagelayout}.colPos.9.slide}'}" />

@@ -12,7 +12,7 @@ plugin.tx_semanticsuggestion_suggestions {
         # When enabled, semantic suggestions will automatically appear after the main content.
         # Set to 0 if you use custom templates or a different template package.
         # In that case, add manually: <f:cObject typoscriptObjectPath="lib.semantic_suggestion" />
-        overrideBootstrapTemplates = 0
+        overrideBootstrapTemplates = 1
     }
 
     # Unified Quality Settings

@@ -111,79 +111,50 @@ class GenerateSimilaritiesTask extends AbstractTask
      */
     public function execute(): bool
     {
-        try {
-            $this->initializeDependencies();
-            $this->logger->info('Starting similarity generation task', [
+        $this->initializeDependencies();
+        $this->logger->info('Starting similarity generation task', [
+            'startPageId' => $this->startPageId,
+            'qualityLevel' => $this->qualityLevel,
+            'storageThreshold' => $this->minimumSimilarity,
+            'recursiveExclusion' => $this->recursiveExclusion,
+            'languageId' => $this->languageId
+        ]);
+
+        $excludePages = !empty($this->excludePages)
+            ? GeneralUtility::intExplode(',', $this->excludePages, true)
+            : [];
+
+        $siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
+        $site = $siteFinder->getSiteByPageId($this->startPageId);
+
+        $languagesToProcess = $this->languageId >= 0
+            ? [$site->getLanguageById($this->languageId)]
+            : $site->getAllLanguages();
+
+        foreach ($languagesToProcess as $language) {
+            $languageId = $language->getLanguageId();
+
+            $this->logger->info('Processing language', [
                 'startPageId' => $this->startPageId,
-                'qualityLevel' => $this->qualityLevel,
-                'storageThreshold' => $this->minimumSimilarity,
-                'recursiveExclusion' => $this->recursiveExclusion,
-                'languageId' => $this->languageId
+                'language' => $languageId
             ]);
 
-            // Convert exclude pages list to array
-            $excludePages = !empty($this->excludePages)
-                ? GeneralUtility::intExplode(',', $this->excludePages, true)
-                : [];
+            $pages = $this->getPages($this->startPageId, 999, $languageId, $excludePages);
 
-            // Analysis for each language
-            $siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
-            $site = $siteFinder->getSiteByPageId($this->startPageId);
-
-            $languagesToProcess = [];
-            if ($this->languageId >= 0) {
-                // Process only specified language
-                try {
-                    $specificLanguage = $site->getLanguageById($this->languageId);
-                    $languagesToProcess = [$specificLanguage];
-                } catch (\Exception $e) {
-                    $this->logger->error('Specified language not found', [
-                        'languageId' => $this->languageId,
-                        'exception' => $e->getMessage()
-                    ]);
-                    return false;
-                }
-            } else {
-                // Process all languages
-                $languagesToProcess = $site->getAllLanguages();
-            }
-
-            foreach ($languagesToProcess as $language) {
-                $languageId = $language->getLanguageId();
-
-                $this->logger->info('Processing language', [
+            if (empty($pages)) {
+                $this->logger->warning('No pages found for language', [
                     'startPageId' => $this->startPageId,
-                    'language' => $languageId
+                    'languageId' => $languageId
                 ]);
-
-                // Retrieve pages for this language
-                $pages = $this->getPages($this->startPageId, 999, $languageId, $excludePages);
-
-                if (empty($pages)) {
-                    $this->logger->warning('No pages found for language', [
-                        'startPageId' => $this->startPageId,
-                        'languageId' => $languageId
-                    ]);
-                    continue; // Continue to next language
-                }
-
-                // Analyze similarities
-                $analysisData = $this->pageAnalysisService->analyzePages($pages, $languageId);
-
-                // Save results
-                $this->saveResults($analysisData, $this->startPageId, $languageId, $this->minimumSimilarity);
+                continue;
             }
 
-            $this->logger->info('Similarity generation task completed successfully');
-            return true;
-
-        } catch (\Exception $e) {
-            $this->logger->error('Error during similarity generation task', [
-                'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return false;
+            $analysisData = $this->pageAnalysisService->analyzePages($pages, $languageId);
+            $this->saveResults($analysisData, $this->startPageId, $languageId, $this->minimumSimilarity);
         }
+
+        $this->logger->info('Similarity generation task completed successfully');
+        return true;
     }
 
     /**
@@ -192,58 +163,36 @@ class GenerateSimilaritiesTask extends AbstractTask
     protected function getPages(int $parentPageId, int $depth, int $languageId, array $excludePages = []): array
     {
         $allPages = [];
-        
-        try {
-            // Retrieve pages directly under parent
-            $pages = $this->pageRepository->getMenu(
-                $parentPageId,
-                '*',
-                'sorting',
-                'AND hidden=0 AND deleted=0',
-                false,
-                false, // disableGroupAccessCheck doit être un booléen
-                $languageId
-            );
-            
-            foreach ($pages as $page) {
-                // Check if page is excluded
-                $isExcluded = in_array($page['uid'], $excludePages);
-                
-                if ($isExcluded) {
-                    // If exclusion is not recursive, continue anyway 
-                    // to analyze sub-pages WITHOUT excluding them
-                    if (!$this->recursiveExclusion && $depth > 1) {
-                        // IMPORTANT: Don't pass $excludePages for sub-pages
-                        // because we only want to exclude current page, not its children
-                        $subPages = $this->getPages($page['uid'], $depth - 1, $languageId, []);
-                        $allPages = array_merge($allPages, $subPages);
-                    }
-                    // In all cases, ignore current page
-                    continue;
-                }
-                
-                // Add page if not excluded
-                $allPages[$page['uid']] = $page;
-                $allPages[$page['uid']]['sys_language_uid'] = $languageId;
-                
-                // Recurse if depth allows
-                if ($depth > 1) {
-                    // For non-excluded pages, continue with complete exclusion list
-                    $subPages = $this->getPages($page['uid'], $depth - 1, $languageId, $excludePages);
+
+        $pages = $this->pageRepository->getMenu(
+            $parentPageId,
+            '*',
+            'sorting',
+            'AND hidden=0 AND deleted=0',
+            false,
+            false,
+            $languageId
+        );
+
+        foreach ($pages as $page) {
+            if (in_array($page['uid'], $excludePages)) {
+                if (!$this->recursiveExclusion && $depth > 1) {
+                    $subPages = $this->getPages($page['uid'], $depth - 1, $languageId, []);
                     $allPages = array_merge($allPages, $subPages);
                 }
+                continue;
             }
-            
-            return $allPages;
-            
-        } catch (\Exception $e) {
-            $this->logger->error('Error retrieving pages', [
-                'parentId' => $parentPageId,
-                'languageId' => $languageId,
-                'exception' => $e->getMessage()
-            ]);
-            return $allPages;
+
+            $allPages[$page['uid']] = $page;
+            $allPages[$page['uid']]['sys_language_uid'] = $languageId;
+
+            if ($depth > 1) {
+                $subPages = $this->getPages($page['uid'], $depth - 1, $languageId, $excludePages);
+                $allPages = array_merge($allPages, $subPages);
+            }
         }
+
+        return $allPages;
     }
 
 
@@ -253,89 +202,57 @@ class GenerateSimilaritiesTask extends AbstractTask
     protected function saveResults(array $analysisData, int $rootPageId, int $languageId, float $proximityThreshold): void
     {
         $connection = $this->connectionPool->getConnectionForTable('tx_semanticsuggestion_similarities');
-        
-        try {
-            // Begin transaction
-            $connection->beginTransaction();
-            
-            // Delete old entries for this site and language
-            $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
-            
-            // TYPO3 v12 and v13 compatible version
-            $queryBuilder
-                ->delete('tx_semanticsuggestion_similarities')
-                ->where(
-                    $queryBuilder->expr()->eq('root_page_id', $queryBuilder->createNamedParameter($rootPageId)),
-                    $queryBuilder->expr()->eq('sys_language_uid', $queryBuilder->createNamedParameter($languageId))
-                )
-                ->executeStatement();
-            
-            // Prepare bulk insertions
-            $bulkInserts = [];
-            $now = time();
-            
-            $this->logger->info('Using threshold for filtering', ['threshold' => $proximityThreshold]);
-            
+        $connection->beginTransaction();
+
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tx_semanticsuggestion_similarities');
+        $queryBuilder
+            ->delete('tx_semanticsuggestion_similarities')
+            ->where(
+                $queryBuilder->expr()->eq('root_page_id', $queryBuilder->createNamedParameter($rootPageId)),
+                $queryBuilder->expr()->eq('sys_language_uid', $queryBuilder->createNamedParameter($languageId))
+            )
+            ->executeStatement();
+
+        $bulkInserts = [];
+        $now = time();
+
         foreach ($analysisData['results'] as $pageId => $pageData) {
-            // Vérifier que 'similarities' existe et est un tableau
             if (!isset($pageData['similarities']) || !is_array($pageData['similarities'])) {
-                $this->logger->warning('No similarities found for page', ['pageId' => $pageId]);
                 continue;
             }
-            
+
             foreach ($pageData['similarities'] as $similarPageId => $similarity) {
-                    // Only store similarities above threshold
-                    if ($similarity['score'] >= $proximityThreshold) {
-                        $bulkInserts[] = [
-                            'page_id' => $pageId,
-                            'similar_page_id' => $similarPageId,
-                            'similarity_score' => $similarity['score'],
-                            'root_page_id' => $rootPageId, // Utiliser l'ID fourni
-                            'sys_language_uid' => $languageId,
-                            'crdate' => $now,
-                            'tstamp' => $now
-                        ];
-                    }
-                    
-                    // Insert in batches to optimize performance
-                    if (count($bulkInserts) >= 100) {
-                        $this->bulkInsert($bulkInserts);
-                        $bulkInserts = [];
-                    }
+                if ($similarity['score'] >= $proximityThreshold) {
+                    $bulkInserts[] = [
+                        'page_id' => $pageId,
+                        'similar_page_id' => $similarPageId,
+                        'similarity_score' => $similarity['score'],
+                        'root_page_id' => $rootPageId,
+                        'sys_language_uid' => $languageId,
+                        'crdate' => $now,
+                        'tstamp' => $now
+                    ];
+                }
+
+                if (count($bulkInserts) >= 100) {
+                    $this->bulkInsert($bulkInserts);
+                    $bulkInserts = [];
                 }
             }
-            
-            // Insert remaining records
-            if (!empty($bulkInserts)) {
-                $this->bulkInsert($bulkInserts);
-            }
-            
-            // Commit transaction
-            $connection->commit();
-            
-            $this->logger->info('Similarities saved to database', [
-                'rootPageId' => $rootPageId,
-                'languageId' => $languageId,
-                'similaritiesCount' => count($bulkInserts)
-            ]);
-            
-            // Clear cache for this site
-            $this->cacheManager->getCache('semantic_suggestion')->flushByTag('site_' . $rootPageId);
-            
-        } catch (\Exception $e) {
-            // Rollback transaction on error
-            if ($connection->isTransactionActive()) {
-                $connection->rollBack();
-            }
-            
-            $this->logger->error('Failed to save similarities', [
-                'rootPageId' => $rootPageId,
-                'languageId' => $languageId,
-                'exception' => $e->getMessage()
-            ]);
-            
-            throw $e;
         }
+
+        if (!empty($bulkInserts)) {
+            $this->bulkInsert($bulkInserts);
+        }
+
+        $connection->commit();
+
+        $this->logger->info('Similarities saved to database', [
+            'rootPageId' => $rootPageId,
+            'languageId' => $languageId,
+        ]);
+
+        $this->cacheManager->getCache('semantic_suggestion')->flushByTag('site_' . $rootPageId);
     }
 
     /**
